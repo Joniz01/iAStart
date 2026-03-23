@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>AI Mastery Bootcamp</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#E8E7E1;min-height:100vh;display:flex;justify-content:center;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#D1D5DB;border-radius:4px;}
+textarea,input,button{font-family:inherit;}
+@keyframes pulse{0%,100%{opacity:.5;transform:scale(.9)}50%{opacity:1;transform:scale(1.2)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes btnIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.fadeup{animation:fadeUp .2s ease forwards;}
+.btn-in{animation:btnIn .2s ease forwards;}
+@media(min-width:768px){
+  #app-shell{flex-direction:row!important;max-width:1200px!important;box-shadow:0 0 60px rgba(0,0,0,.07)!important;}
+  #sidebar{display:flex!important;width:280px!important;min-width:260px;flex-shrink:0!important;border-right:1px solid #E5E7EB;}
+  #mobile-nav{display:none!important;}
+  #desktop-header{display:flex!important;}
+}
+@media(max-width:767px){
+  #desktop-header{display:none!important;}
+  #sidebar{display:none!important;}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── TUTOR PROVIDERS (AI that teaches) ───────────────────────────────────────
+const TUTOR_PROVIDERS = {
+  gemini: { id:"gemini", name:"Google Gemini", emoji:"🟢", model:"gemini-2.0-flash", color:"#1A73E8", bg:"#E8F4FD", border:"#BFDBFE", keyPrefix:"AIza", keyPlaceholder:"AIzaSy...", keyHint:"aistudio.google.com", keyUrl:"https://aistudio.google.com/app/apikey", limits:["1M tokens/día","Gemini 2.0 Flash"], recommended:true },
+  groq:   { id:"groq",   name:"Groq",          emoji:"⚡", model:"llama-3.3-70b",    color:"#D97706", bg:"#FFFBEB", border:"#FCD34D", keyPrefix:"gsk_", keyPlaceholder:"gsk_...",   keyHint:"console.groq.com",        keyUrl:"https://console.groq.com/keys",          limits:["30 req/min","Llama 3.3 70B"], recommended:false },
+};
+
+// ─── TRACKS (AI being learned) ────────────────────────────────────────────────
+const ACTION_SUFFIX = `
+
+INSTRUCCIÓN CRÍTICA: Al final de CADA respuesta, sin excepción, incluye este bloque exacto:
+##ACCIONES##
+1. [acción concreta en primera persona, máx 8 palabras]
+2. [acción para practicar ahora, máx 8 palabras]
+3. [siguiente paso lógico, máx 8 palabras]
+##FIN##`;
+
+const P = {
+  blue:  {t:"#1D4ED8",bg:"#EFF6FF",b:"#BFDBFE"},
+  green: {t:"#047857",bg:"#ECFDF5",b:"#A7F3D0"},
+  amber: {t:"#B45309",bg:"#FFFBEB",b:"#FCD34D"},
+  purple:{t:"#6D28D9",bg:"#F5F3FF",b:"#DDD6FE"},
+  red:   {t:"#B91C1C",bg:"#FEF2F2",b:"#FECACA"},
+  cyan:  {t:"#0E7490",bg:"#ECFEFF",b:"#A5F3FC"},
+  violet:{t:"#5B21B6",bg:"#F5F3FF",b:"#C4B5FD"},
+  gray:  {t:"#374151",bg:"#F9FAFB",b:"#E5E7EB"},
+  orange:{t:"#C2410C",bg:"#FFF7ED",b:"#FED7AA"},
+};
+
+// ── CLAUDE TRACK ──────────────────────────────────────────────────────────────
+const CLAUDE_MODULES = [
+  { id:"C00", emoji:"🧠", name:"Fundamentos de Claude", sub:"Cómo piensa Claude, tokens, context window, primeros prompts", weeks:"1 semana", hours:"14–28h", color:P.blue, level:"Básico",
+    system:"Eres tutor experto en Claude de Anthropic. Módulo C00 - Fundamentos. Nivel básico. Guía con ejercicios prácticos. Incluye un ejercicio al final de cada explicación. Responde en español."+ACTION_SUFFIX,
+    topics:["¿Qué es Claude y cómo funciona internamente?","Tokens: qué son y cómo afectan tu uso","Anatomía del prompt: rol, tarea, contexto, formato","Context window: límites y estrategias","Modelos: Haiku, Sonnet, Opus — diferencias","Claude.ai UI: shortcuts y funciones avanzadas","Historial y gestión de conversaciones","Temperatura y parámetros de creatividad"],
+    projects:[{t:"Experimento de tono",d:"Mismo prompt, 5 variaciones — documenta diferencias",tag:"Exploración"},{t:"Mapa del context window",d:"Visualiza cuándo Claude olvida información",tag:"Análisis"},{t:"Comparativa de modelos",d:"Misma tarea en Haiku, Sonnet y Opus",tag:"Benchmark"}] },
+  { id:"C01", emoji:"⚡", name:"Prompt Engineering avanzado", sub:"CoT, few-shot, XML tags, chaining, debugging", weeks:"2 semanas", hours:"28–56h", color:P.green, level:"Intermedio",
+    system:"Eres experto en Prompt Engineering para Claude. Módulo C01. Enseña CoT, few-shot, XML tags, role prompting, chaining. Analiza prompts del estudiante y sugiere mejoras. Responde en español."+ACTION_SUFFIX,
+    topics:["Zero-shot vs few-shot vs many-shot","Chain of Thought (CoT) y Tree of Thought","Role prompting: personas y expertos ficticios","XML tags para estructurar prompts complejos","System prompts: diseño y buenas prácticas","Prompt chaining: dividir tareas","Negative prompting","Debugging y evaluación de prompts","Prompts para código y análisis","Prompt libraries reutilizables"],
+    projects:[{t:"Biblioteca de prompts",d:"20 prompts reutilizables por caso de uso",tag:"Librería"},{t:"Pipeline de análisis",d:"Chain de 4 pasos: extrae → limpia → analiza → visualiza",tag:"Pipeline"},{t:"Prompt debugger",d:"Corrige 3 prompts rotos en menos de 3 intentos",tag:"Debug"}] },
+  { id:"C02", emoji:"🎨", name:"Artifacts & creación visual", sub:"React, HTML/CSS/JS, SVG, storage, apps interactivas", weeks:"2 semanas", hours:"28–56h", color:P.amber, level:"Intermedio",
+    system:"Eres experto en Artifacts de Claude (React, HTML, SVG). Módulo C02. Genera código funcional completo listo para usar. Propón mini-proyectos progresivos. Responde en español."+ACTION_SUFFIX,
+    topics:["Qué son los Artifacts y cuándo usarlos","HTML/CSS/JS en Artifacts","React: JSX, componentes, props","Hooks: useState, useEffect","Tailwind CSS utilities","Gráficas con Recharts","SVG generativo","Persistent Storage API","Artifacts multi-componente","Debugging en Artifacts"],
+    projects:[{t:"Dashboard de hábitos",d:"Tracker con storage persistente en React",tag:"App"},{t:"Generador de reportes",d:"CSV → gráficas + análisis en un Artifact",tag:"Generador"},{t:"Mini-app propia",d:"Calculadora financiera, kanban o juego",tag:"Libre"}] },
+  { id:"C03", emoji:"🔧", name:"Skills, MCP y automatización", sub:"SKILL.md, MCP servers, flujos automatizados", weeks:"1.5 semanas", hours:"21–42h", color:P.purple, level:"Avanzado",
+    system:"Eres experto en Skills de Claude y MCP. Módulo C03. Convierte tareas en skills con SKILL.md exacto. Muestra ejemplos reales. Responde en español."+ACTION_SUFFIX,
+    topics:["Qué son los Skills y cómo activarlos","Anatomía de SKILL.md","Crear skills desde cero","Skills para archivos y documentos","Model Context Protocol (MCP)","Conectar MCP servers","Integración Google Drive y Slack","Automatización de workflows","Skills encadenados","Testing de skills"],
+    projects:[{t:"Skill para tu trabajo",d:"SKILL.md para una tarea repetitiva real",tag:"Skill"},{t:"Pipeline de documentos",d:"Lee PDFs, extrae datos, genera Word",tag:"Auto"},{t:"MCP server local",d:"Conecta Claude a tu sistema de archivos",tag:"MCP"}] },
+  { id:"C04", emoji:"🚀", name:"API Anthropic + Python & JS", sub:"Python esencial, JavaScript/Node.js y Messages API", weeks:"3 semanas", hours:"42–84h", color:P.red, level:"Avanzado",
+    system:"Eres mentor en Python, JavaScript y la API de Anthropic. Módulo C04. Enseña desde cero con ejercicios progresivos. Pregunta con qué lenguaje quiere empezar. Responde en español."+ACTION_SUFFIX,
+    submodules:[
+      {id:"C04-PY",icon:"🐍",name:"Python esencial",color:"#1D4ED8",bg:"#EFF6FF",dur:"1 semana",topics:["Python, pip, venv","Variables, listas, dicts","Funciones y clases","Archivos JSON y TXT","requests HTTP","try/except","Variables de entorno .env","async/await asyncio","Anthropic Python SDK","Jupyter Notebooks"],projects:[{t:"Script de análisis",d:"Lee .txt y usa Claude API para resumir",tag:"Script"},{t:"Procesador masivo",d:"50 archivos en loop, guarda en JSON",tag:"Batch"}]},
+      {id:"C04-JS",icon:"⚡",name:"JavaScript/Node.js",color:"#B45309",bg:"#FFFBEB",dur:"1 semana",topics:["Node.js, npm, package.json","Arrow functions, destructuring","Promesas y async/await","Fetch API y JSON","ES6 modules","try/catch async","dotenv","Express.js básico","Anthropic JS SDK","Testing con Jest"],projects:[{t:"Chatbot CLI",d:"Historial de conversación en terminal",tag:"CLI"},{t:"API REST Express",d:"Endpoint /chat con Claude como backend",tag:"Backend"}]},
+      {id:"C04-API",icon:"🔌",name:"Messages API completa",color:"#B91C1C",bg:"#FEF2F2",dur:"1 semana",topics:["Setup y autenticación","System prompts","Historial multi-turn","Tool use / Function calling","Streaming","Batch processing","Prompt caching","Rate limits","Optimización de costos","Logging"],projects:[{t:"Chatbot con memoria",d:"API + SQLite, recuerda conversaciones",tag:"Full stack"},{t:"Agente con tools",d:"Claude busca, lee archivos, ejecuta código",tag:"Agente"},{t:"Deploy producción",d:"Railway/Vercel con logs y rate limits",tag:"Deploy"}]},
+    ], topics:[], projects:[] },
+  { id:"C05", emoji:"🏗️", name:"Proyectos integradores Claude", sub:"Apps completas combinando todo lo aprendido", weeks:"2 semanas", hours:"28–56h", color:P.cyan, level:"Experto",
+    system:"Eres arquitecto de soluciones con Claude. Módulo C05. Tech lead: revisa arquitectura, code review, descompón proyectos. Responde en español."+ACTION_SUFFIX,
+    topics:["Arquitectura de apps con IA","Gestión de estado conversacional","UX/UI para apps con IA","Seguridad y prompt injection","Optimización de costos","Monitoreo y logging","CI/CD para apps IA","Documentación y handoff"],
+    projects:[{t:"Asistente full-stack",d:"App con auth, historial y skills propios",tag:"Flagship"},{t:"Automatizador",d:"Emails → tareas → tickets en Jira/Notion",tag:"Auto"},{t:"Producto propio",d:"Problema real → solución completa con deploy",tag:"Capstone"}] },
+  { id:"C06", emoji:"🌟", name:"Claude experto y frontier", sub:"Claude Code, agents, RAG, multimodal, evals", weeks:"1 semana", hours:"14–28h", color:P.violet, level:"Experto",
+    system:"Eres experto en técnicas frontier de Claude: Claude Code, multi-agent, RAG, evals. Módulo C06. Propón desafíos ambiciosos. Responde en español."+ACTION_SUFFIX,
+    topics:["Claude Code CLI","Multi-agent systems","Prompt injection y seguridad","Evaluaciones (evals)","Multimodal: imágenes y docs","Embeddings y búsqueda semántica","RAG paso a paso","Contribuir a la comunidad"],
+    projects:[{t:"Agente de código",d:"Claude Code refactoriza un repo entero",tag:"Claude Code"},{t:"Sistema RAG",d:"Embeddings + búsqueda + Claude = chat con docs",tag:"RAG"}] },
+];
+
+// ── GROK TRACK ────────────────────────────────────────────────────────────────
+const GROK_MODULES = [
+  { id:"G00", emoji:"🤖", name:"Fundamentos de Grok y xAI", sub:"Qué es Grok, Think mode, interfaces y primeros prompts", weeks:"1 semana", hours:"14–28h", color:P.gray, level:"Básico",
+    system:"Eres tutor experto en Grok de xAI. Módulo G00 - Fundamentos. Explica qué es Grok, cómo difiere de otros modelos, Think mode, y cómo sacarle partido desde el principio. Ejercicios prácticos. Responde en español."+ACTION_SUFFIX,
+    topics:["¿Qué es Grok y qué lo hace único?","xAI: la empresa detrás de Grok","Grok vs ChatGPT vs Claude vs Gemini","Think mode: razonamiento paso a paso","Interfaz grok.com: funciones y atajos","Grok en X (Twitter): integración nativa","Modelos disponibles: Grok-2, Grok-3","Personalidad y tono de Grok","Límites y capacidades actuales","Primeros prompts efectivos con Grok"],
+    projects:[{t:"Comparativa de modelos",d:"Misma tarea en Grok-2 y Grok-3 — documenta diferencias",tag:"Benchmark"},{t:"Think mode en acción",d:"Problema complejo — compara respuesta con y sin Think",tag:"Análisis"},{t:"Grok en X",d:"Usa Grok desde X para analizar 5 hilos virales",tag:"Exploración"}] },
+  { id:"G01", emoji:"💭", name:"Think Mode y razonamiento avanzado", sub:"Chain of thought nativo, problemas complejos, matemáticas", weeks:"2 semanas", hours:"28–56h", color:P.blue, level:"Intermedio",
+    system:"Eres experto en Think Mode de Grok y razonamiento avanzado. Módulo G01. Enseña cómo aprovechar el razonamiento paso a paso, problemas lógicos, matemáticos y de código. Responde en español."+ACTION_SUFFIX,
+    topics:["Think mode: cómo funciona internamente","Activar y desactivar Think en cada caso","Matemáticas y lógica con Grok","Resolución de problemas de código","Análisis de datos paso a paso","Razonamiento causal y contrafactual","Comparar think mode vs respuesta directa","Límites del razonamiento de Grok","Prompts para maximizar Think mode","Casos de uso óptimos para Think"],
+    projects:[{t:"Solver matemático",d:"Resuelve 10 problemas complejos con Think mode documentado",tag:"Matemáticas"},{t:"Debug con Think",d:"Usa Grok Think para debuggear 5 funciones rotas",tag:"Código"},{t:"Análisis causal",d:"Analiza un problema de negocio con razonamiento profundo",tag:"Negocio"}] },
+  { id:"G02", emoji:"🎨", name:"Aurora: generación de imágenes", sub:"Crear, editar y optimizar imágenes con Aurora de xAI", weeks:"1.5 semanas", hours:"21–42h", color:P.orange, level:"Intermedio",
+    system:"Eres experto en Aurora, el modelo de generación de imágenes de xAI integrado en Grok. Módulo G02. Enseña prompting visual, estilos, edición y casos de uso. Responde en español."+ACTION_SUFFIX,
+    topics:["¿Qué es Aurora y cómo funciona?","Acceso a Aurora desde grok.com","Anatomía del prompt visual","Estilos: fotorrealista, ilustración, arte","Parámetros de control (aspect ratio, estilo)","Iteración y refinamiento de imágenes","Edición de imágenes existentes","Aurora vs DALL-E vs Midjourney vs Stable Diffusion","Casos de uso: marketing, contenido, diseño","Límites éticos y de contenido"],
+    projects:[{t:"Brand kit con Aurora",d:"Genera logo, banner y avatares para una marca ficticia",tag:"Diseño"},{t:"Storyboard visual",d:"5 imágenes que narren una historia coherente",tag:"Narrativa"},{t:"Comparativa de generadores",d:"Mismo prompt en Aurora, DALL-E y SD — analiza calidad",tag:"Benchmark"}] },
+  { id:"G03", emoji:"🔍", name:"DeepSearch y análisis web", sub:"Búsqueda profunda, análisis de X, noticias en tiempo real", weeks:"1.5 semanas", hours:"21–42h", color:P.green, level:"Avanzado",
+    system:"Eres experto en DeepSearch de Grok y análisis de contenido web y de X. Módulo G03. Enseña cómo usar DeepSearch para investigación, análisis de tendencias y fact-checking. Responde en español."+ACTION_SUFFIX,
+    topics:["¿Qué es DeepSearch?","Activar DeepSearch en Grok","Búsqueda de noticias en tiempo real","Análisis de tendencias en X/Twitter","Fact-checking con fuentes primarias","Investigación académica con Grok","Análisis de sentimiento en redes","Monitoreo de marca y reputación","DeepSearch para trading e inversiones","Límites y sesgos de DeepSearch"],
+    projects:[{t:"Informe de tendencias",d:"DeepSearch: analiza una tendencia de X de las últimas 24h",tag:"Análisis"},{t:"Fact-checker automático",d:"Verifica 10 afirmaciones virales con DeepSearch",tag:"Verificación"},{t:"Análisis competitivo",d:"Investiga 3 competidores usando solo Grok DeepSearch",tag:"Negocio"}] },
+  { id:"G04", emoji:"🚀", name:"API xAI + Python & JS", sub:"Python esencial, JavaScript/Node.js y xAI API completa", weeks:"3 semanas", hours:"42–84h", color:P.red, level:"Avanzado",
+    system:"Eres mentor en Python, JavaScript y la API de xAI (Grok). Módulo G04. La API xAI es compatible con OpenAI SDK. Enseña desde cero con ejercicios. Responde en español."+ACTION_SUFFIX,
+    submodules:[
+      {id:"G04-PY",icon:"🐍",name:"Python esencial para xAI",color:"#1D4ED8",bg:"#EFF6FF",dur:"1 semana",topics:["Python, pip, venv","Variables, listas, dicts","Funciones y clases","Archivos JSON","requests HTTP","try/except","Variables de entorno","async/await","xAI Python SDK (OpenAI-compatible)","Jupyter Notebooks"],projects:[{t:"Chat con Grok API",d:"Script Python que conversa con Grok-2 via API",tag:"Script"},{t:"Analizador de texto",d:"Lee archivos y usa Grok para extraer insights",tag:"Análisis"}]},
+      {id:"G04-JS",icon:"⚡",name:"JavaScript/Node.js para xAI",color:"#B45309",bg:"#FFFBEB",dur:"1 semana",topics:["Node.js, npm","Arrow functions, async/await","Fetch API","ES6 modules","try/catch","dotenv","Express.js","xAI JS SDK (OpenAI-compatible)","Streaming responses","Testing con Jest"],projects:[{t:"Chatbot CLI con Grok",d:"Terminal que conversa con Grok manteniendo historial",tag:"CLI"},{t:"API REST Grok",d:"Endpoint /ask que usa Grok como backend",tag:"Backend"}]},
+      {id:"G04-API",icon:"🔌",name:"xAI API completa",color:"#B91C1C",bg:"#FEF2F2",dur:"1 semana",topics:["Setup xAI API key","Compatibilidad con OpenAI SDK","Modelos: grok-2, grok-3, grok-vision","System prompts y personalidad","Historial multi-turn","Vision: análisis de imágenes","Streaming de respuestas","Rate limits y costos","Comparativa precios xAI vs Anthropic","Deploy en producción"],projects:[{t:"App con Grok Vision",d:"Sube imágenes y Grok las analiza via API",tag:"Vision"},{t:"Bot de X integrado",d:"Bot que responde menciones usando Grok API",tag:"X/Twitter"},{t:"Deploy serverless",d:"Grok API en Vercel Edge Functions",tag:"Deploy"}]},
+    ], topics:[], projects:[] },
+  { id:"G05", emoji:"🏗️", name:"Proyectos integradores Grok", sub:"Apps reales combinando Grok API, Aurora y DeepSearch", weeks:"2 semanas", hours:"28–56h", color:P.cyan, level:"Experto",
+    system:"Eres arquitecto de soluciones con Grok y xAI. Módulo G05. Ayuda a construir apps que combinen Grok API, Aurora y DeepSearch. Tech lead mode. Responde en español."+ACTION_SUFFIX,
+    topics:["Arquitectura con Grok API","Combinar text + vision + imagen en un flujo","Apps con DeepSearch en tiempo real","UX para respuestas con razonamiento largo","Optimizar costos en xAI API","Autenticación con X/Twitter OAuth","Webhooks de X para bots","Deploy y escalado","Monitoreo de calidad de respuestas","Casos de uso únicos de Grok vs competidores"],
+    projects:[{t:"Dashboard de inteligencia",d:"DeepSearch + Grok API = monitor de noticias de tu industria",tag:"SaaS"},{t:"Generador de contenido",d:"Grok text + Aurora imagen = posts para redes sociales",tag:"Marketing"},{t:"Producto con Grok",d:"Tu idea + Grok API = MVP desplegado en producción",tag:"Capstone"}] },
+  { id:"G06", emoji:"🌟", name:"Grok experto: frontier y futuro", sub:"Grok-3, integración X Premium, agentes, casos avanzados", weeks:"1 semana", hours:"14–28h", color:P.violet, level:"Experto",
+    system:"Eres experto en las capacidades frontier de Grok y xAI. Módulo G06. Explora Grok-3, integración profunda con X, casos de uso únicos y lo que viene. Responde en español."+ACTION_SUFFIX,
+    topics:["Grok-3: nuevas capacidades","X Premium: acceso exclusivo a Grok","Grok en Colossus: supercomputadora","Agentes autónomos con Grok","Multimodal: audio y video (roadmap)","Grok vs LLMs: ventajas competitivas","Privacidad y datos en xAI","Contribuir al ecosistema xAI","Casos de uso únicos: trading, noticias","El futuro de Grok y AGI según Musk"],
+    projects:[{t:"Agente de noticias",d:"Grok autónomo que monitorea X y genera briefing diario",tag:"Agente"},{t:"Análisis de portfolio",d:"Grok analiza tu portfolio con DeepSearch en tiempo real",tag:"Finance"},{t:"Comparativa frontier",d:"Grok-3 vs Claude Opus vs GPT-4o: evaluación sistemática",tag:"Research"}] },
+];
+
+// ── GEMINI TRACK ──────────────────────────────────────────────────────────────
+const GEMINI_MODULES = [
+  { id:"GEM00", emoji:"💎", name:"Fundamentos de Gemini", sub:"Google AI, modelos Gemini, primeros prompts y multimodal", weeks:"1 semana", hours:"14–28h", color:P.blue, level:"Básico",
+    system:"Eres tutor experto en Google Gemini. Módulo GEM00 - Fundamentos. Explica la familia de modelos Gemini, capacidades multimodales desde el inicio, y diferencias con otros LLMs. Ejercicios prácticos. Responde en español."+ACTION_SUFFIX,
+    topics:["¿Qué es Gemini y la familia de modelos?","Google DeepMind: quién lo construye","Gemini nano, Flash, Pro, Ultra — diferencias","Gemini nativo multimodal: texto, imágenes, audio","gemini.google.com: interfaz completa","Gemini en móvil: app Android e iOS","Gemini vs ChatGPT vs Claude vs Grok","Context window de 1M tokens","Primeros prompts efectivos","Integración con Google account"],
+    projects:[{t:"Comparativa de modelos",d:"Flash vs Pro en misma tarea — velocidad y calidad",tag:"Benchmark"},{t:"Análisis multimodal",d:"Sube imagen + texto y analiza la respuesta de Gemini",tag:"Multimodal"},{t:"1M context en acción",d:"Sube un PDF largo y haz preguntas específicas",tag:"Context"}] },
+  { id:"GEM01", emoji:"💡", name:"Gems: agentes personalizados", sub:"Crear, configurar y publicar Gems especializados", weeks:"2 semanas", hours:"28–56h", color:P.green, level:"Intermedio",
+    system:"Eres experto en Gems de Google Gemini. Módulo GEM01. Enseña a crear, configurar y usar Gems (agentes personalizados). Crea ejemplos reales y funcionales. Responde en español."+ACTION_SUFFIX,
+    topics:["¿Qué son los Gems?","Gems prediseñados de Google","Crear tu primer Gem personalizado","System prompt para Gems","Darle nombre, personalidad e instrucciones","Gems para productividad personal","Gems para equipos de trabajo","Compartir Gems con otros usuarios","Gems vs GPTs de OpenAI vs Claude Projects","Casos de uso: tutor, asistente, coach"],
+    projects:[{t:"Gem de escritura",d:"Crea un Gem editor que mejora tu estilo de redacción",tag:"Gem"},{t:"Gem de estudio",d:"Gem que te hace quiz sobre cualquier tema que le des",tag:"Educación"},{t:"Gem de trabajo",d:"Gem especializado en tu industria con contexto permanente",tag:"Productividad"}] },
+  { id:"GEM02", emoji:"🌐", name:"Google AI Studio y multimodal", sub:"AI Studio, prompting avanzado, visión, audio y video", weeks:"2 semanas", hours:"28–56h", color:P.amber, level:"Intermedio",
+    system:"Eres experto en Google AI Studio y las capacidades multimodales de Gemini. Módulo GEM02. Enseña a usar AI Studio para prototipar, y el multimodal nativo (imagen, audio, video). Responde en español."+ACTION_SUFFIX,
+    topics:["Google AI Studio: qué es y para qué sirve","Prompt design en AI Studio","Variables y prompts con plantillas","Historial y versionado de prompts","Análisis de imágenes con Gemini Vision","Transcripción y análisis de audio","Análisis de video (YouTube y archivos)","Generación de código desde imagen","Document AI: analizar PDFs y documentos","Comparar modelos en AI Studio"],
+    projects:[{t:"Analizador de facturas",d:"Sube PDFs de facturas — Gemini extrae datos estructurados",tag:"Document AI"},{t:"Transcriptor de reuniones",d:"Audio de reunión → transcripción + resumen + tareas",tag:"Audio"},{t:"Generador desde wireframe",d:"Foto de wireframe → código HTML funcional",tag:"Vision to code"}] },
+  { id:"GEM03", emoji:"🔗", name:"Google Workspace + Gemini", sub:"Docs, Sheets, Gmail, Slides y Meet con IA integrada", weeks:"1.5 semanas", hours:"21–42h", color:P.purple, level:"Avanzado",
+    system:"Eres experto en Gemini integrado en Google Workspace. Módulo GEM03. Enseña Gemini en Docs, Sheets, Gmail, Slides y Meet. Casos de uso prácticos de productividad. Responde en español."+ACTION_SUFFIX,
+    topics:["Gemini en Google Docs: redacción y edición","Gemini en Gmail: drafts y respuestas","Gemini en Google Sheets: fórmulas y análisis","Gemini en Slides: presentaciones automáticas","Gemini en Google Meet: transcripción y notas","NotebookLM: tu segundo cerebro con IA","Google Vids con Gemini","Automatización con Google Apps Script + Gemini","Workspace AI en equipos empresariales","Casos de uso: productividad x10"],
+    projects:[{t:"Pipeline de emails",d:"Gemini lee emails, clasifica y genera respuestas draft",tag:"Gmail"},{t:"Dashboard automático",d:"Sheets + Gemini = análisis de datos con lenguaje natural",tag:"Sheets"},{t:"NotebookLM para investigación",d:"Sube 10 papers y crea una síntesis con podcast",tag:"NotebookLM"}] },
+  { id:"GEM04", emoji:"🚀", name:"API Gemini + Python & JS", sub:"Python esencial, JavaScript y Gemini API completa", weeks:"3 semanas", hours:"42–84h", color:P.red, level:"Avanzado",
+    system:"Eres mentor en Python, JavaScript y la API de Google Gemini. Módulo GEM04. Enseña desde cero con ejercicios. La API Gemini tiene SDK oficial para Python y JS. Responde en español."+ACTION_SUFFIX,
+    submodules:[
+      {id:"GEM04-PY",icon:"🐍",name:"Python para Gemini API",color:"#1D4ED8",bg:"#EFF6FF",dur:"1 semana",topics:["Python, pip, venv","Variables, listas, dicts","Funciones y clases","Archivos y JSON","requests HTTP","try/except","Variables de entorno","async/await","google-generativeai SDK","Jupyter Notebooks"],projects:[{t:"Chat multimodal",d:"Script que acepta texto e imagen y llama a Gemini",tag:"Script"},{t:"Procesador de documentos",d:"Lee PDFs en masa y extrae información estructurada",tag:"Batch"}]},
+      {id:"GEM04-JS",icon:"⚡",name:"JavaScript para Gemini API",color:"#B45309",bg:"#FFFBEB",dur:"1 semana",topics:["Node.js, npm","Arrow functions, async/await","Fetch API","ES6 modules","try/catch","dotenv","Express.js","@google/generative-ai SDK","Streaming con Gemini","Function calling"],projects:[{t:"Chatbot web con Gemini",d:"App Next.js con chat en tiempo real usando Gemini",tag:"Web"},{t:"API multimodal",d:"Endpoint que acepta imagen y devuelve análisis",tag:"API"}]},
+      {id:"GEM04-API",icon:"🔌",name:"Gemini API avanzada",color:"#B91C1C",bg:"#FEF2F2",dur:"1 semana",topics:["API key y autenticación","Modelos: Flash, Pro, Ultra via API","System instructions","Historial multi-turn","Function calling / Tool use","Embeddings con text-embedding-004","Grounding con Google Search","Streaming responses","Prompt caching","Vertex AI vs AI Studio API"],projects:[{t:"Buscador semántico",d:"Embeddings Gemini + base vectorial = search inteligente",tag:"Embeddings"},{t:"Agente con Grounding",d:"Gemini busca en Google automáticamente para responder",tag:"Grounding"},{t:"App en producción",d:"Deploy con Vertex AI, monitoreo y escalado",tag:"Vertex AI"}]},
+    ], topics:[], projects:[] },
+  { id:"GEM05", emoji:"🏗️", name:"Proyectos integradores Gemini", sub:"Apps completas con Gemini API, Workspace y multimodal", weeks:"2 semanas", hours:"28–56h", color:P.cyan, level:"Experto",
+    system:"Eres arquitecto de soluciones con Google Gemini. Módulo GEM05. Tech lead: diseña arquitecturas, revisa código, conecta Workspace + API + Gemini. Responde en español."+ACTION_SUFFIX,
+    topics:["Arquitectura de apps con Gemini","Combinar API + Workspace + multimodal","Apps con contexto de 1M tokens","Retrieval con Google Search Grounding","UX para respuestas largas de Gemini","Vertex AI: enterprise y escalado","MLOps con Google Cloud + Gemini","Seguridad y privacidad en Google AI","Optimización de costos (Flash vs Pro)","Casos únicos de Gemini: larga contexto"],
+    projects:[{t:"Asistente de conocimiento",d:"NotebookLM + Gemini API = Q&A sobre tus docs",tag:"Knowledge"},{t:"Automatizador Workspace",d:"Apps Script + Gemini: flujos de trabajo automáticos",tag:"Workspace"},{t:"App multimodal propia",d:"Tu idea + Gemini multimodal = MVP en producción",tag:"Capstone"}] },
+  { id:"GEM06", emoji:"🌟", name:"Gemini experto y Vertex AI", sub:"Vertex AI, agentes, RAG avanzado, Google Cloud", weeks:"1 semana", hours:"14–28h", color:P.violet, level:"Experto",
+    system:"Eres experto en Gemini avanzado, Vertex AI y Google Cloud AI. Módulo GEM06. Explora Vertex AI Agents, RAG enterprise, y el ecosistema Google Cloud. Responde en español."+ACTION_SUFFIX,
+    topics:["Vertex AI vs Google AI Studio","Vertex AI Agents: crear agentes autónomos","Grounding avanzado y RAG en Vertex","Gemini en BigQuery: análisis a escala","Cloud Run con Gemini API","Model Garden: otros modelos en Vertex","Imagen 3 y Veo: imagen y video generativo","Evaluaciones y evals en Vertex","MLOps: pipeline de datos + Gemini","El futuro: Gemini Ultra y Project Astra"],
+    projects:[{t:"Agente Vertex AI",d:"Agente con tools, memoria y acceso a BigQuery",tag:"Vertex"},{t:"RAG enterprise",d:"Vertex AI Search + Gemini = buscador inteligente",tag:"RAG"},{t:"Pipeline de video",d:"Veo API: genera y edita video con Gemini",tag:"Video"}] },
+];
+
+const ALL_TRACKS = {
+  claude: { id:"claude", name:"Claude", emoji:"🟣", subtitle:"by Anthropic", color:"#6B46C1", bg:"#FAF5FF", border:"#D8B4FE", desc:"Prompts avanzados, Artifacts, API, Skills y MCP", modules: CLAUDE_MODULES },
+  grok:   { id:"grok",   name:"Grok",   emoji:"🤖", subtitle:"by xAI",      color:"#111827", bg:"#F9FAFB", border:"#D1D5DB", desc:"Think Mode, Aurora, DeepSearch y API xAI",        modules: GROK_MODULES   },
+  gemini: { id:"gemini", name:"Gemini", emoji:"💎", subtitle:"by Google",   color:"#1A73E8", bg:"#EFF6FF", border:"#BFDBFE", desc:"Gems, Workspace, AI Studio y Vertex AI",          modules: GEMINI_MODULES },
+};
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+function useLS(key, init) {
+  const [v,setV] = useState(function(){ try{ var s=localStorage.getItem(key); return s?JSON.parse(s):init; }catch(e){ return init; } });
+  const set = function(x){ var n=typeof x==="function"?x(v):x; setV(n); try{localStorage.setItem(key,JSON.stringify(n));}catch(e){} };
+  return [v,set];
+}
+
+function parseActions(raw) {
+  if (!raw) return { text:"", actions:[] };
+  var markers = ["##ACCIONES##","[ACCIONES]"], ends = ["##FIN##","[/ACCIONES]"];
+  var mi=-1, mLen=0;
+  for (var i=0;i<markers.length;i++){ var idx=raw.indexOf(markers[i]); if(idx!==-1){mi=idx;mLen=markers[i].length;break;} }
+  if (mi===-1) return { text:raw, actions:[] };
+  var blockStart=mi+mLen, blockEnd=raw.length;
+  for (var j=0;j<ends.length;j++){ var ei=raw.indexOf(ends[j],blockStart); if(ei!==-1){blockEnd=ei;break;} }
+  var actions = raw.slice(blockStart,blockEnd).split("\n")
+    .map(function(l){ return l.replace(/^\s*\d+[\.\)]\s*/,"").replace(/^[-*•]\s*/,"").trim(); })
+    .filter(function(l){ return l.length>3&&l.length<100; }).slice(0,4);
+  var text = (raw.slice(0,mi)+(blockEnd<raw.length?raw.slice(blockEnd+ends[0].length):"")).trim();
+  return { text:text||raw.slice(0,mi).trim()||raw, actions:actions };
+}
+
+function getDefaultActions(modId) {
+  var prefix = modId.slice(0,3);
+  var map = {
+    "C00":["Explícame qué es un token","Dame un ejercicio práctico","¿Cómo funciona el context window?"],
+    "C01":["Enséñame Chain of Thought","Analiza este prompt mío","¿Qué es few-shot prompting?"],
+    "C02":["Crea un Artifact React básico","Explícame useState","Dame código completo funcional"],
+    "C03":["Muéstrame un SKILL.md completo","¿Qué es MCP exactamente?","Ayúdame a crear mi primer skill"],
+    "C04":["Empiezo con Python","Empiezo con JavaScript","¿Cómo llamo a la API de Claude?"],
+    "C05":["Diseña la arquitectura de mi app","Revisa mi código","¿Cómo hago deploy?"],
+    "C06":["Explícame RAG con ejemplo","¿Qué es Claude Code?","Crea un agente paso a paso"],
+    "G00":["¿Qué hace único a Grok?","Activa Think mode conmigo","¿Cómo usar Grok en X?"],
+    "G01":["Resuelve este problema con Think","Explícame Think mode profundo","¿Cuándo NO usar Think mode?"],
+    "G02":["Genera una imagen con Aurora","Explícame prompting visual","¿Cómo editar imágenes con Aurora?"],
+    "G03":["Haz una búsqueda DeepSearch","Analiza una tendencia de X ahora","¿Cómo hacer fact-checking con Grok?"],
+    "G04":["Empiezo con Python para xAI","Empiezo con JavaScript","¿Cómo llamo a la API de Grok?"],
+    "G05":["Diseña mi app con Grok API","Combina Aurora + texto","¿Cómo monto un bot de X?"],
+    "G06":["¿Qué puede hacer Grok-3?","Crea un agente autónomo conmigo","Compara Grok vs Claude en este caso"],
+    "GEM":["Explícame los modelos Gemini","Dame un ejercicio multimodal","¿Cómo usar Gemini gratis?"],
+  };
+  return map[modId] || map[prefix] || ["Continuar al siguiente tema","Dame un ejercicio práctico","Explícame más a fondo"];
+}
+
+function hasProxy() { return window.location.protocol==="https:" || window.location.hostname==="localhost"; }
+
+async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
+  var full = "";
+  var readStream = async function(res, extract) {
+    var reader=res.body.getReader(), dec=new TextDecoder();
+    while(true){
+      var chunk=await reader.read(); if(chunk.done)break;
+      var lines=dec.decode(chunk.value,{stream:true}).split("\n");
+      for(var i=0;i<lines.length;i++){
+        if(!lines[i].startsWith("data: "))continue;
+        var data=lines[i].slice(6).trim();
+        if(!data||data==="[DONE]")continue;
+        try{ var t=extract(JSON.parse(data)); if(t){full+=t;onChunk(full);} }catch(e){}
+      }
+    }
+  };
+
+  if (hasProxy()) {
+    var res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,apiKey,systemPrompt,messages})});
+    if(!res.ok){var d=null;try{d=await res.json();}catch(e){}throw new Error((d&&d.error)||("HTTP "+res.status));}
+    if(provider==="gemini") await readStream(res,function(j){return j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts&&j.candidates[0].content.parts[0]&&j.candidates[0].content.parts[0].text;});
+    else await readStream(res,function(j){return j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;});
+    return full;
+  }
+
+  if(provider==="gemini"){
+    var contents=(Array.isArray(messages)&&messages.length>0)?messages.map(function(m){return{role:m.role==="assistant"?"model":"user",parts:[{text:m.content||""}]};}): [{role:"user",parts:[{text:"Inicia."}]}];
+    if(contents[contents.length-1].role!=="user")contents.push({role:"user",parts:[{text:"continúa"}]});
+    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:1400,temperature:0.7}})});
+    if(!res2.ok){var d2=null;try{d2=await res2.json();}catch(e){}throw new Error((d2&&d2.error&&d2.error.message)||("Gemini "+res2.status));}
+    await readStream(res2,function(j){return j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts&&j.candidates[0].content.parts[0]&&j.candidates[0].content.parts[0].text;});
+  } else {
+    var msgs=[{role:"system",content:systemPrompt||"Eres un tutor útil."}];
+    if(Array.isArray(messages))for(var i=0;i<messages.length;i++)msgs.push({role:messages[i].role,content:messages[i].content});
+    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:TUTOR_PROVIDERS.groq.model,max_tokens:1400,stream:true,messages:msgs})});
+    if(!res3.ok){var d3=null;try{d3=await res3.json();}catch(e){}throw new Error((d3&&d3.error&&d3.error.message)||("Groq "+res3.status));}
+    await readStream(res3,function(j){return j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;});
+  }
+  return full;
+}
+
+function testKey(provider,apiKey){
+  var p=TUTOR_PROVIDERS[provider]; var key=apiKey.trim();
+  if(!key)throw new Error("Ingresa tu API key");
+  if(!key.startsWith(p.keyPrefix))throw new Error("La key de "+p.name+" debe empezar con \""+p.keyPrefix+"\"");
+}
+
+// ─── COMPONENTS ──────────────────────────────────────────────────────────────
+function Ring({pct,size,sw,color}){
+  pct=pct||0;size=size||48;sw=sw||4;color=color||"#111827";
+  var r=(size-sw)/2,c=2*Math.PI*r;
+  return <svg width={size} height={size} style={{transform:"rotate(-90deg)",flexShrink:0}}>
+    <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="#E5E7EB" strokeWidth={sw}/>
+    <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={sw} strokeDasharray={c} strokeDashoffset={c*(1-Math.min(pct,100)/100)} strokeLinecap="round" style={{transition:"stroke-dashoffset .6s ease"}}/>
+    <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" style={{transform:"rotate(90deg)",transformOrigin:"50% 50%",fontSize:size*.21,fontWeight:700,fill:color}}>{Math.round(pct)}%</text>
+  </svg>;
+}
+
+function Pill({label,color,bg}){ return <span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:20,background:bg,color:color,letterSpacing:".04em",textTransform:"uppercase",whiteSpace:"nowrap",lineHeight:1}}>{label}</span>; }
+
+function Md({text}){
+  text=text||"";
+  var lines=text.split("\n"),els=[],inCode=false,codeLines=[],lang="",i=0;
+  function inline(str,k){
+    var parts=str.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+    return <span key={k}>{parts.map(function(p,j){
+      if(p.startsWith("**")&&p.endsWith("**"))return<strong key={j} style={{fontWeight:700}}>{p.slice(2,-2)}</strong>;
+      if(p.startsWith("`")&&p.endsWith("`"))return<code key={j} style={{background:"#F1F5F9",color:"#0F172A",padding:"1px 5px",borderRadius:4,fontSize:".88em",fontFamily:"monospace"}}>{p.slice(1,-1)}</code>;
+      return p;
+    })}</span>;
+  }
+  while(i<lines.length){
+    var l=lines[i];
+    if(l.startsWith("```")){
+      if(!inCode){inCode=true;lang=l.slice(3);codeLines=[];}
+      else{els.push(<div key={i} style={{background:"#1E293B",borderRadius:8,padding:"12px 14px",margin:"8px 0",overflowX:"auto"}}>{lang&&<div style={{fontSize:10,color:"#64748B",marginBottom:4,fontFamily:"monospace"}}>{lang}</div>}<pre style={{margin:0,fontSize:12,color:"#E2E8F0",fontFamily:"'Courier New',monospace",whiteSpace:"pre",lineHeight:1.6}}>{codeLines.join("\n")}</pre></div>);inCode=false;codeLines=[];}
+    } else if(inCode){codeLines.push(l);}
+    else if(l.match(/^#{1,3} /)){var lv=l.match(/^(#+)/)[1].length,txt=l.replace(/^#+\s/,"");els.push(<div key={i} style={{fontWeight:700,fontSize:lv===1?16:lv===2?14:13,color:"#111827",margin:"12px 0 4px"}}>{inline(txt,0)}</div>);}
+    else if(l.match(/^[-*] /)){els.push(<div key={i} style={{display:"flex",gap:8,margin:"3px 0"}}><span style={{color:"#9CA3AF",flexShrink:0,marginTop:2}}>•</span><span style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{inline(l.slice(2),0)}</span></div>);}
+    else if(l.trim()===""){els.push(<div key={i} style={{height:5}}/>);}
+    else{els.push(<p key={i} style={{margin:"3px 0",fontSize:13,color:"#374151",lineHeight:1.7}}>{inline(l,0)}</p>);}
+    i++;
+  }
+  return <div>{els}</div>;
+}
+
+function ActionBar({actions,color,onAction,disabled}){
+  if(!actions||!actions.length)return null;
+  return <div style={{marginTop:8,padding:"10px 12px",background:"#F8FAFC",borderRadius:10,border:"1px solid #E2E8F0"}}>
+    <div style={{fontSize:10,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:7}}>¿Qué quieres hacer ahora?</div>
+    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      {actions.map(function(a,i){
+        return <button key={i} className="btn-in" style={{animationDelay:(i*0.06)+"s",background:"none",border:"none",padding:0,cursor:disabled?"not-allowed":"pointer"}} onClick={function(){if(!disabled)onAction(a);}}>
+          <span style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",borderRadius:8,border:"1.5px solid "+(i===0?color+"50":"#E2E8F0"),background:i===0?color+"0D":"white",fontSize:13,color:i===0?color:"#374151",fontWeight:i===0?600:400,textAlign:"left",lineHeight:1.4,opacity:disabled?.5:1,transition:"background .12s",fontFamily:"inherit"}}>
+            <span style={{fontSize:13,flexShrink:0}}>{i===0?"▶":"→"}</span>{a}
+          </span>
+        </button>;
+      })}
+    </div>
+  </div>;
+}
+
+// ─── CHAT ─────────────────────────────────────────────────────────────────────
+function Chat({mod,provider,apiKey,trackId}){
+  var prov=TUTOR_PROVIDERS[provider];
+  var [msgs,setMsgs]=useLS("chat5_"+trackId+"_"+provider+"_"+mod.id,[]);
+  var [input,setInput]=useState("");
+  var [loading,setLoading]=useState(false);
+  var [streaming,setStreaming]=useState("");
+  var [actions,setActions]=useState(msgs.length===0?null:getDefaultActions(mod.id));
+  var bottomRef=useRef(null);
+  var inputRef=useRef(null);
+
+  useEffect(function(){if(bottomRef.current)bottomRef.current.scrollIntoView({behavior:"smooth"});},[msgs,streaming]);
+  useEffect(function(){
+    var last=null;
+    for(var i=msgs.length-1;i>=0;i--){if(msgs[i].role==="assistant"){last=msgs[i];break;}}
+    if(last&&last.actions&&last.actions.length)setActions(last.actions);
+    else if(msgs.length>0)setActions(getDefaultActions(mod.id));
+  },[]);
+
+  function call(userMsg,history){
+    setLoading(true);setStreaming("");setActions(null);
+    var allMsgs=history.concat([{role:"user",content:userMsg}]);
+    streamAI({provider,apiKey,systemPrompt:mod.system,messages:allMsgs,onChunk:function(t){setStreaming(t);}})
+    .then(function(full){
+      setStreaming("");
+      var parsed=parseActions(full);
+      var acts=parsed.actions.length>0?parsed.actions:getDefaultActions(mod.id);
+      setMsgs(history.concat([{role:"user",content:userMsg},{role:"assistant",content:full,cleanText:parsed.text,actions:acts}]));
+      setActions(acts);
+    }).catch(function(e){
+      setStreaming("");
+      var msg=e.message||"Error";
+      if(msg.includes("401")||msg.toLowerCase().includes("invalid"))msg="❌ API key inválida. Ve a Ajustes y verifica tu key de "+(provider==="gemini"?"aistudio.google.com":"console.groq.com");
+      else if(msg.includes("429"))msg="⏳ Límite alcanzado. Espera un momento e intenta de nuevo.";
+      var acts=getDefaultActions(mod.id);
+      setMsgs(history.concat([{role:"user",content:userMsg},{role:"assistant",content:"⚠️ "+msg,cleanText:"⚠️ "+msg,actions:acts}]));
+      setActions(acts);
+    }).finally(function(){setLoading(false);setTimeout(function(){if(inputRef.current)inputRef.current.focus();},80);});
+  }
+
+  function send(){var t=input.trim();if(!t||loading)return;setInput("");call(t,msgs);}
+
+  var starters=["Hola! Quiero comenzar el módulo \""+mod.name+"\". Dame una primera sesión práctica de 2 horas con los conceptos clave y un ejercicio concreto para empezar ahora mismo.","Dame un ejercicio práctico para hacer ahora","Explícame el concepto más importante","¿Cómo sé si estoy listo para el siguiente módulo?"];
+
+  return <div style={{display:"flex",flexDirection:"column",height:"100%",minHeight:0}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid #F3F4F6",flexShrink:0,background:"white"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{width:30,height:30,borderRadius:8,background:mod.color.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15}}>{mod.emoji}</div>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:"#111827"}}>Tutor IA — {mod.id}</div>
+          <div style={{display:"flex",alignItems:"center",gap:4,marginTop:1}}><span style={{fontSize:9}}>{prov.emoji}</span><span style={{fontSize:10,color:"#9CA3AF"}}>{prov.name} · {prov.model}</span></div>
+        </div>
+      </div>
+      {msgs.length>0&&<button onClick={function(){if(window.confirm("¿Borrar historial?")){setMsgs([]);setActions(null);}}} style={{fontSize:11,color:"#9CA3AF",background:"none",border:"1px solid #E5E7EB",borderRadius:6,padding:"4px 8px",cursor:"pointer"}}>Nueva sesión</button>}
+    </div>
+
+    <div style={{flex:1,overflowY:"auto",padding:14,display:"flex",flexDirection:"column",gap:12,minHeight:0}}>
+      {msgs.length===0&&!loading&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:260,gap:16,padding:"20px 0"}}>
+        <div style={{width:64,height:64,borderRadius:20,background:mod.color.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>{mod.emoji}</div>
+        <div style={{textAlign:"center"}}>
+          <div style={{fontSize:15,fontWeight:700,color:"#111827",marginBottom:4}}>Tutor listo</div>
+          <div style={{fontSize:12,color:"#6B7280",maxWidth:280,lineHeight:1.6,margin:"0 auto"}}>Especializado en <strong>{mod.name}</strong></div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:7,width:"100%",maxWidth:360}}>
+          {starters.map(function(q,i){return(
+            <button key={i} onClick={function(){call(q,[]);}} style={{background:i===0?mod.color.t:"white",color:i===0?"white":mod.color.t,border:"1.5px solid "+mod.color.b,borderRadius:10,padding:i===0?"12px 16px":"9px 12px",fontSize:i===0?13:12,fontWeight:i===0?700:400,cursor:"pointer",textAlign:"left",lineHeight:1.4,fontFamily:"inherit",display:"flex",alignItems:"center",gap:8,boxShadow:i===0?"0 4px 12px "+mod.color.t+"30":"none"}}>
+              <span>{i===0?"🚀":"→"}</span>{i===0?"Comenzar "+mod.id+" (sesión guiada)":q}
+            </button>
+          );})}</div>
+      </div>}
+
+      {msgs.map(function(m,i){
+        var isLast=i===msgs.length-1;
+        var displayText=m.cleanText||m.content;
+        return <div key={i} className="fadeup" style={{display:"flex",flexDirection:"column",alignItems:m.role==="user"?"flex-end":"flex-start"}}>
+          {m.role==="user"
+            ?<div style={{background:mod.color.t,color:"white",borderRadius:"14px 14px 4px 14px",padding:"10px 14px",maxWidth:"82%",fontSize:13,lineHeight:1.6}}>{m.content}</div>
+            :<div style={{maxWidth:"96%",width:"96%"}}>
+              <div style={{background:"white",border:"1px solid #E5E7EB",borderRadius:"14px 14px 14px 4px",padding:"12px 14px"}}><Md text={displayText}/></div>
+              {isLast&&!loading&&m.actions&&m.actions.length>0&&<ActionBar actions={m.actions} color={mod.color.t} onAction={function(a){call(a,msgs);}} disabled={loading}/>}
+            </div>
+          }
+        </div>;
+      })}
+
+      {(loading||streaming)&&<div className="fadeup" style={{display:"flex",alignItems:"flex-start"}}>
+        <div style={{background:"white",border:"1px solid #E5E7EB",borderRadius:"14px 14px 14px 4px",padding:"12px 14px",maxWidth:"92%",width:"92%"}}>
+          {streaming?<Md text={parseActions(streaming).text}/>:<div style={{display:"flex",gap:5,alignItems:"center",padding:"4px 0"}}>{[0,1,2].map(function(j){return<div key={j} style={{width:7,height:7,borderRadius:"50%",background:mod.color.t,animation:"pulse 1.2s ease-in-out infinite",animationDelay:(j*.2)+"s"}}/>;})}</div>}
+        </div>
+      </div>}
+
+      <div ref={bottomRef}/>
+    </div>
+
+    {msgs.length>0&&<div style={{padding:"10px 12px",borderTop:"1px solid #F3F4F6",background:"white",flexShrink:0}}>
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <textarea ref={inputRef} value={input} rows={1}
+          onChange={function(e){setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px";}}
+          onKeyDown={function(e){if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
+          placeholder="O escribe tu propia pregunta… (Enter para enviar)" disabled={loading}
+          style={{flex:1,borderRadius:10,border:"1px solid #E5E7EB",padding:"10px 12px",fontSize:13,resize:"none",fontFamily:"inherit",lineHeight:1.5,outline:"none",background:loading?"#F9FAFB":"white",maxHeight:100,overflowY:"auto"}}/>
+        <button onClick={send} disabled={loading||!input.trim()} style={{width:38,height:38,borderRadius:10,border:"none",flexShrink:0,background:(loading||!input.trim())?"#E5E7EB":mod.color.t,color:(loading||!input.trim())?"#9CA3AF":"white",cursor:(loading||!input.trim())?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,transition:"background .15s",fontFamily:"inherit"}}>↑</button>
+      </div>
+    </div>}
+  </div>;
+}
+
+// ─── SUBMODULE CARD ────────────────────────────────────────────────────────────
+function SubCard({sub,topicChecked,projDone,onTopic,onProj}){
+  var [open,setOpen]=useState(false);
+  var done=(topicChecked||[]).filter(Boolean).length+Object.values(projDone||{}).filter(Boolean).length;
+  var total=sub.topics.length+sub.projects.length;
+  var pct=total>0?Math.round(done/total*100):0;
+  return <div style={{border:"1.5px solid "+sub.color+"30",borderRadius:12,overflow:"hidden",marginBottom:8}}>
+    <div onClick={function(){setOpen(!open);}} style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",background:sub.bg,cursor:"pointer",userSelect:"none"}}>
+      <span style={{fontSize:18}}>{sub.icon}</span>
+      <div style={{flex:1}}><div style={{fontSize:13,fontWeight:700,color:sub.color}}>{sub.name}</div><div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{sub.dur} · {sub.topics.length} temas</div></div>
+      <Ring pct={pct} size={36} sw={3} color={sub.color}/>
+      <span style={{fontSize:10,color:"#9CA3AF",transition:".2s",transform:open?"rotate(180deg)":"none"}}>▼</span>
+    </div>
+    {open&&<div style={{padding:12,background:"white",borderTop:"1px solid "+sub.color+"15"}}>
+      <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".05em",marginBottom:8}}>Temas</div>
+      {sub.topics.map(function(t,i){return(
+        <label key={i} onClick={function(){onTopic(i);}} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"7px 8px",borderRadius:7,cursor:"pointer",background:(topicChecked||[])[i]?"#F0FDF4":"transparent",marginBottom:3}}>
+          <div style={{width:16,height:16,borderRadius:4,border:"2px solid "+((topicChecked||[])[i]?sub.color:"#D1D5DB"),background:(topicChecked||[])[i]?sub.color:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{(topicChecked||[])[i]&&<span style={{color:"white",fontSize:9}}>✓</span>}</div>
+          <span style={{fontSize:12,color:(topicChecked||[])[i]?"#166534":"#374151",textDecoration:(topicChecked||[])[i]?"line-through":"none",lineHeight:1.5}}>{t}</span>
+        </label>
+      );})}
+      <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".05em",margin:"12px 0 8px"}}>Proyectos</div>
+      {sub.projects.map(function(p,pi){return(
+        <div key={pi} style={{border:"1px solid "+((projDone||{})[pi]?"#86EFAC":"#E5E7EB"),borderRadius:8,padding:"10px 12px",background:(projDone||{})[pi]?"#F0FDF4":"white",marginBottom:6,display:"flex",gap:10}}>
+          <div onClick={function(){onProj(pi);}} style={{width:20,height:20,borderRadius:5,border:"2px solid "+((projDone||{})[pi]?sub.color:"#D1D5DB"),background:(projDone||{})[pi]?sub.color:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer",marginTop:1}}>{(projDone||{})[pi]&&<span style={{color:"white",fontSize:10}}>✓</span>}</div>
+          <div><div style={{fontSize:12,fontWeight:700,color:"#111827",marginBottom:2}}>{p.t} <Pill label={p.tag} color={sub.color} bg={sub.bg}/></div><div style={{fontSize:11,color:"#6B7280"}}>{p.d}</div></div>
+        </div>
+      );})}
+    </div>}
+  </div>;
+}
+
+// ─── MODULE DETAIL ─────────────────────────────────────────────────────────────
+function ModDetail({mod,progress,onProgress,provider,apiKey,trackId}){
+  var [tab,setTab]=useState("contenido");
+  var top=progress.topics||[],prj=progress.projects||{};
+  function toggleTopic(i){var n=[...top];n[i]=!n[i];onProgress({...progress,topics:n});}
+  function toggleProj(pi){onProgress({...progress,projects:{...prj,[pi]:!prj[pi]}});}
+  function toggleSubT(sid,i){var st=progress.subTopics||{};var c=st[sid]||[];var n=[...c];n[i]=!n[i];onProgress({...progress,subTopics:{...st,[sid]:n}});}
+  function toggleSubP(sid,pi){var sp=progress.subProjs||{};var c=sp[sid]||{};onProgress({...progress,subProjs:{...sp,[sid]:{...c,[pi]:!c[pi]}}});}
+  var total=0,done=0;
+  if(mod.submodules){mod.submodules.forEach(function(s){total+=s.topics.length+s.projects.length;var st=(progress.subTopics||{})[s.id]||[];var sp=(progress.subProjs||{})[s.id]||{};done+=st.filter(Boolean).length+Object.values(sp).filter(Boolean).length;});}
+  else{total=mod.topics.length+mod.projects.length;done=top.filter(Boolean).length+Object.values(prj).filter(Boolean).length;}
+  var pct=total>0?Math.round(done/total*100):0;
+  function Tab({id,label,icon}){return<button onClick={function(){setTab(id);}} style={{flex:1,padding:"10px 0",border:"none",background:"transparent",fontSize:13,fontWeight:tab===id?700:400,color:tab===id?mod.color.t:"#9CA3AF",borderBottom:tab===id?"2px solid "+mod.color.t:"2px solid transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:5,fontFamily:"inherit"}}><span style={{fontSize:14}}>{icon}</span>{label}</button>;}
+  return <div style={{display:"flex",flexDirection:"column",height:"100%",minHeight:0}}>
+    <div style={{padding:"14px 14px 0",flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:12}}>
+        <div style={{width:46,height:46,borderRadius:12,background:mod.color.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,flexShrink:0}}>{mod.emoji}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:3}}><span style={{fontSize:10,color:"#9CA3AF",fontWeight:700}}>{mod.id}</span><Pill label={mod.level} color={mod.color.t} bg={mod.color.bg}/></div>
+          <h2 style={{fontSize:16,fontWeight:800,color:"#111827",margin:"0 0 2px",lineHeight:1.3}}>{mod.name}</h2>
+          <p style={{fontSize:11,color:"#6B7280",margin:0}}>{mod.weeks} · {mod.hours}</p>
+        </div>
+        <Ring pct={pct} size={44} sw={4} color={mod.color.t}/>
+      </div>
+    </div>
+    <div style={{display:"flex",borderBottom:"1px solid #F3F4F6",flexShrink:0,padding:"0 14px"}}>
+      <Tab id="contenido" label="Contenido" icon="📋"/>
+      <Tab id="ia" label="Tutor IA" icon="🤖"/>
+    </div>
+    <div style={{flex:1,overflow:tab==="ia"?"hidden":"auto",display:"flex",flexDirection:"column",minHeight:0}}>
+      {tab==="contenido"&&<div style={{padding:"14px",paddingBottom:60,overflowY:"auto"}}>
+        {mod.submodules?<>
+          <div style={{background:"#FFFBEB",border:"1px solid #FCD34D",borderRadius:10,padding:"10px 12px",marginBottom:14,display:"flex",gap:8}}>
+            <span style={{fontSize:14,flexShrink:0}}>💡</span>
+            <p style={{fontSize:11,color:"#92400E",margin:0,lineHeight:1.6}}>Este módulo tiene <strong>3 sub-módulos</strong>. Usa el <strong>Tutor IA</strong> para sesiones guiadas.</p>
+          </div>
+          {mod.submodules.map(function(sub){return<SubCard key={sub.id} sub={sub} topicChecked={(progress.subTopics||{})[sub.id]} projDone={(progress.subProjs||{})[sub.id]} onTopic={function(i){toggleSubT(sub.id,i);}} onProj={function(pi){toggleSubP(sub.id,pi);}}/>;})}</>
+        :<>
+          <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".05em",marginBottom:10}}>Temas</div>
+          {mod.topics.map(function(t,i){return(
+            <label key={i} onClick={function(){toggleTopic(i);}} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:4,background:top[i]?"#F0FDF4":"#FAFAFA",border:"1px solid "+(top[i]?"#86EFAC":"#F3F4F6"),transition:"all .15s"}}>
+              <div style={{width:18,height:18,borderRadius:5,border:"2px solid "+(top[i]?mod.color.t:"#D1D5DB"),background:top[i]?mod.color.t:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>{top[i]&&<span style={{color:"white",fontSize:9}}>✓</span>}</div>
+              <span style={{fontSize:13,color:top[i]?"#166534":"#374151",textDecoration:top[i]?"line-through":"none",lineHeight:1.5}}>{t}</span>
+            </label>
+          );})}
+          <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".05em",margin:"16px 0 10px"}}>Proyectos hands-on</div>
+          {mod.projects.map(function(p,pi){return(
+            <div key={pi} style={{border:"1px solid "+(prj[pi]?"#86EFAC":"#E5E7EB"),borderRadius:10,padding:"12px",background:prj[pi]?"#F0FDF4":"white",marginBottom:8,display:"flex",gap:10}}>
+              <div onClick={function(){toggleProj(pi);}} style={{width:22,height:22,borderRadius:6,border:"2px solid "+(prj[pi]?mod.color.t:"#D1D5DB"),background:prj[pi]?mod.color.t:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,cursor:"pointer",marginTop:1}}>{prj[pi]&&<span style={{color:"white",fontSize:11}}>✓</span>}</div>
+              <div style={{flex:1}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}><span style={{fontSize:13,fontWeight:700,color:prj[pi]?"#166534":"#111827"}}>{p.t}</span><Pill label={p.tag} color={mod.color.t} bg={mod.color.bg}/></div>
+                <p style={{fontSize:12,color:prj[pi]?"#15803D":"#6B7280",margin:0,lineHeight:1.5}}>{p.d}</p>
+              </div>
+            </div>
+          );})}
+        </>}
+        <div style={{marginTop:16,padding:"12px",background:mod.color.bg,border:"1px solid "+mod.color.b,borderRadius:10,display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:18}}>🤖</span>
+          <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:mod.color.t,marginBottom:2}}>¿Listo para practicar?</div><div style={{fontSize:11,color:"#6B7280"}}>Ve al Tutor IA para sesiones guiadas</div></div>
+          <button onClick={function(){setTab("ia");}} style={{background:mod.color.t,color:"white",border:"none",borderRadius:8,padding:"7px 12px",fontSize:12,fontWeight:700,cursor:"pointer",flexShrink:0,fontFamily:"inherit"}}>Ir →</button>
+        </div>
+      </div>}
+      {tab==="ia"&&<div style={{flex:1,display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}><Chat mod={mod} provider={provider} apiKey={apiKey} trackId={trackId}/></div>}
+    </div>
+  </div>;
+}
+
+// ─── SIDEBAR ──────────────────────────────────────────────────────────────────
+function Sidebar({track,progMap,activeModId,onSelect,onSettings,onChangeTrack}){
+  var pct=function(mod){
+    var p=progMap[mod.id]||{};var total=0,done=0;
+    if(mod.submodules){mod.submodules.forEach(function(s){total+=s.topics.length+s.projects.length;var st=(p.subTopics||{})[s.id]||[];var sp=(p.subProjs||{})[s.id]||{};done+=st.filter(Boolean).length+Object.values(sp).filter(Boolean).length;});}
+    else{total=mod.topics.length+mod.projects.length;done=(p.topics||[]).filter(Boolean).length+Object.values(p.projects||{}).filter(Boolean).length;}
+    return total>0?Math.round(done/total*100):0;
+  };
+  var gp=Math.round(track.modules.reduce(function(a,m){return a+pct(m);},0)/track.modules.length);
+  return <div id="sidebar" style={{display:"flex",flexDirection:"column",background:"white",height:"100vh",overflow:"hidden"}}>
+    <div style={{padding:"16px 14px 12px",borderBottom:"1px solid #F3F4F6",flexShrink:0}}>
+      <button onClick={onChangeTrack} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:track.bg,borderRadius:12,padding:"10px 12px",border:"1.5px solid "+track.border,cursor:"pointer",marginBottom:12,fontFamily:"inherit"}}>
+        <span style={{fontSize:24}}>{track.emoji}</span>
+        <div style={{flex:1,textAlign:"left"}}>
+          <div style={{fontSize:14,fontWeight:800,color:track.color}}>{track.name} Bootcamp</div>
+          <div style={{fontSize:10,color:"#9CA3AF"}}>{track.subtitle} · Cambiar track →</div>
+        </div>
+      </button>
+      <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <div style={{flex:1}}><div style={{height:4,background:"#F3F4F6",borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:gp+"%",background:track.color,borderRadius:4,transition:"width .6s"}}/></div><div style={{fontSize:10,color:"#9CA3AF",marginTop:3}}>{gp}% completado</div></div>
+        <Ring pct={gp} size={36} sw={3} color={track.color}/>
+      </div>
+    </div>
+    <div style={{flex:1,overflowY:"auto",padding:"8px 8px"}}>
+      {track.modules.map(function(mod){
+        var p=pct(mod),isActive=mod.id===activeModId;
+        return <button key={mod.id} onClick={function(){onSelect(mod.id);}} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 10px",borderRadius:10,width:"100%",textAlign:"left",cursor:"pointer",fontFamily:"inherit",border:"1.5px solid "+(isActive?track.color+"60":p>0?mod.color.b:"transparent"),background:isActive?track.bg:p>0?mod.color.bg+"44":"transparent",marginBottom:3,transition:"all .15s"}}>
+          <div style={{width:32,height:32,borderRadius:8,background:mod.color.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{mod.emoji}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:isActive?700:500,color:isActive?track.color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mod.name}</div>
+            <div style={{fontSize:10,color:"#9CA3AF",marginTop:1}}>{mod.weeks}</div>
+          </div>
+          <Ring pct={p} size={28} sw={2.5} color={isActive?track.color:p>0?mod.color.t:"#D1D5DB"}/>
+        </button>;
+      })}
+    </div>
+    <div style={{padding:"10px",borderTop:"1px solid #F3F4F6",flexShrink:0}}>
+      <button onClick={onSettings} style={{width:"100%",padding:"9px",borderRadius:8,border:"1px solid #E5E7EB",background:"#F9FAFB",fontSize:11,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"inherit"}}>⚙️ Ajustes</button>
+    </div>
+  </div>;
+}
+
+// ─── TRACK SELECTOR ───────────────────────────────────────────────────────────
+function TrackSelector({progMap,onSelect}){
+  function getGP(track){
+    var total=0,done=0;
+    track.modules.forEach(function(mod){
+      var p=progMap[track.id+"_"+mod.id]||{};
+      if(mod.submodules){mod.submodules.forEach(function(s){total+=s.topics.length+s.projects.length;var st=(p.subTopics||{})[s.id]||[];var sp=(p.subProjs||{})[s.id]||{};done+=st.filter(Boolean).length+Object.values(sp).filter(Boolean).length;});}
+      else{total+=mod.topics.length+mod.projects.length;done+=(p.topics||[]).filter(Boolean).length+Object.values(p.projects||{}).filter(Boolean).length;}
+    });
+    return total>0?Math.round(done/total*100):0;
+  }
+  return <div style={{minHeight:"100vh",background:"#E8E7E1",display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"inherit"}}>
+    <div style={{maxWidth:520,width:"100%"}}>
+      <div style={{textAlign:"center",marginBottom:32}}>
+        <div style={{width:64,height:64,borderRadius:20,background:"#111827",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,margin:"0 auto 14px"}}>🎓</div>
+        <h1 style={{fontSize:26,fontWeight:900,color:"#111827",marginBottom:8}}>AI Mastery Bootcamp</h1>
+        <p style={{fontSize:14,color:"#6B7280",lineHeight:1.6}}>Elige el track que quieres dominar.<br/>Cada uno es un bootcamp independiente completo.</p>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        {Object.values(ALL_TRACKS).map(function(track){
+          var gp=getGP(track);
+          return <button key={track.id} onClick={function(){onSelect(track.id);}} style={{
+            display:"flex",alignItems:"center",gap:16,padding:"18px 20px",
+            borderRadius:18,border:"2px solid "+track.border,
+            background:"white",cursor:"pointer",textAlign:"left",fontFamily:"inherit",
+            transition:"all .15s",boxShadow:"0 2px 8px rgba(0,0,0,.06)",
+            width:"100%",
+          }} onMouseEnter={function(e){e.currentTarget.style.borderColor=track.color;e.currentTarget.style.background=track.bg;}} onMouseLeave={function(e){e.currentTarget.style.borderColor=track.border;e.currentTarget.style.background="white";}}>
+            <div style={{width:56,height:56,borderRadius:16,background:track.bg,border:"2px solid "+track.border,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,flexShrink:0}}>{track.emoji}</div>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <span style={{fontSize:18,fontWeight:900,color:track.color}}>{track.name}</span>
+                <span style={{fontSize:11,color:"#9CA3AF"}}>{track.subtitle}</span>
+              </div>
+              <div style={{fontSize:12,color:"#6B7280",marginBottom:6}}>{track.desc}</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {["7 módulos","20+ proyectos","Tutor IA guiado"].map(function(b,i){return<span key={i} style={{fontSize:10,background:"#F3F4F6",color:"#6B7280",padding:"2px 8px",borderRadius:20,border:"1px solid #E5E7EB"}}>{b}</span>;})}
+              </div>
+            </div>
+            <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+              <Ring pct={gp} size={44} sw={4} color={track.color}/>
+              {gp>0&&<span style={{fontSize:10,color:track.color,fontWeight:700}}>{gp===100?"✅ Completo":"En curso"}</span>}
+            </div>
+          </button>;
+        })}
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── SETUP ────────────────────────────────────────────────────────────────────
+function Setup({onSave}){
+  var [provider,setProvider]=useState("gemini");
+  var [key,setKey]=useState("");
+  var [err,setErr]=useState("");
+  var prov=TUTOR_PROVIDERS[provider];
+  function verify(){setErr("");try{testKey(provider,key);onSave(provider,key.trim());}catch(e){setErr(e.message);}}
+  return <div style={{minHeight:"100vh",background:"#E8E7E1",display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"inherit"}}>
+    <div style={{background:"white",borderRadius:24,padding:28,maxWidth:420,width:"100%",boxShadow:"0 8px 32px rgba(0,0,0,.1)"}}>
+      <div style={{textAlign:"center",marginBottom:24}}>
+        <div style={{width:60,height:60,borderRadius:18,background:"#111827",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,margin:"0 auto 12px"}}>🎓</div>
+        <h1 style={{fontSize:22,fontWeight:900,color:"#111827",marginBottom:6}}>AI Mastery Bootcamp</h1>
+        <p style={{fontSize:13,color:"#6B7280",lineHeight:1.6}}>Elige el motor de IA gratuito para tu Tutor IA</p>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>Motor del Tutor IA (gratuito)</div>
+      <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
+        {Object.values(TUTOR_PROVIDERS).map(function(p){return(
+          <button key={p.id} onClick={function(){setProvider(p.id);setKey("");setErr("");}} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",borderRadius:14,border:"2px solid "+(provider===p.id?p.color:"#E5E7EB"),background:provider===p.id?p.bg:"white",cursor:"pointer",textAlign:"left",transition:"all .15s",width:"100%",fontFamily:"inherit"}}>
+            <span style={{fontSize:22,flexShrink:0}}>{p.emoji}</span>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}><span style={{fontSize:14,fontWeight:700,color:"#111827"}}>{p.name}</span>{p.recommended&&<span style={{fontSize:10,fontWeight:700,background:"#ECFDF5",color:"#047857",padding:"1px 7px",borderRadius:20}}>Recomendado</span>}</div>
+              <div style={{display:"flex",gap:6,marginTop:4,flexWrap:"wrap"}}>{p.limits.map(function(l,i){return<span key={i} style={{fontSize:10,color:"#6B7280",background:"#F9FAFB",border:"1px solid #E5E7EB",borderRadius:6,padding:"2px 6px"}}>{l}</span>;})}</div>
+            </div>
+            <div style={{width:20,height:20,borderRadius:"50%",border:"2px solid "+(provider===p.id?p.color:"#D1D5DB"),background:provider===p.id?p.color:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{provider===p.id&&<div style={{width:8,height:8,borderRadius:"50%",background:"white"}}/>}</div>
+          </button>
+        );})}
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>API Key de {prov.name}</div>
+      <input value={key} onChange={function(e){setKey(e.target.value.trim());setErr("");}} placeholder={prov.keyPlaceholder} type="password"
+        style={{width:"100%",padding:"11px 14px",borderRadius:10,border:"1.5px solid "+(err?"#FECACA":key?prov.color:"#E5E7EB"),fontSize:13,outline:"none",fontFamily:"monospace",marginBottom:6,background:err?"#FEF2F2":"white"}}/>
+      {err&&<p style={{fontSize:12,color:"#B91C1C",marginBottom:8,padding:"6px 10px",background:"#FEF2F2",borderRadius:8}}>{err}</p>}
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:12,padding:"8px 10px",background:"#F9FAFB",borderRadius:8,border:"1px solid #E5E7EB"}}>
+        <span style={{fontSize:13}}>🔗</span><span style={{fontSize:11,color:"#6B7280"}}>{prov.keyHint} — </span>
+        <a href={prov.keyUrl} target="_blank" rel="noreferrer" style={{fontSize:11,color:prov.color,fontWeight:700,textDecoration:"none"}}>Ir ahora →</a>
+      </div>
+      <div style={{background:"#F0FDF4",border:"1px solid #A7F3D0",borderRadius:10,padding:"9px 12px",marginBottom:20,display:"flex",gap:8}}>
+        <span style={{fontSize:13,flexShrink:0}}>🔒</span>
+        <p style={{fontSize:11,color:"#065F46",margin:0,lineHeight:1.5}}>Tu key se guarda <strong>solo en este navegador</strong>. Nunca sale a ningún servidor.</p>
+      </div>
+      <button onClick={verify} disabled={!key} style={{width:"100%",padding:13,borderRadius:12,border:"none",background:!key?"#E5E7EB":prov.color,color:!key?"#9CA3AF":"white",fontSize:14,fontWeight:700,cursor:!key?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:!key?"none":"0 4px 12px "+prov.color+"40"}}>
+        Guardar y elegir track →
+      </button>
+    </div>
+  </div>;
+}
+
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+function Settings({provider,onChangeProvider,onClearAll,onBack}){
+  var prov=TUTOR_PROVIDERS[provider];
+  var [confirmDel,setConfirmDel]=useState(false);
+  return <div style={{padding:"20px 16px",maxWidth:440,margin:"0 auto"}}>
+    <h2 style={{fontSize:18,fontWeight:800,color:"#111827",marginBottom:16}}>Ajustes</h2>
+    <div style={{background:prov.bg,border:"1.5px solid "+prov.border,borderRadius:12,padding:"12px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+      <span style={{fontSize:20}}>{prov.emoji}</span>
+      <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700,color:"#374151",marginBottom:2}}>Motor activo del Tutor IA</div><div style={{fontSize:13,fontWeight:700,color:prov.color}}>{prov.name} · {prov.model}</div></div>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      <button onClick={onChangeProvider} style={{padding:"14px",borderRadius:12,border:"1px solid #E5E7EB",background:"white",fontSize:13,fontWeight:700,color:"#111827",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit"}}>🔄 <span>Cambiar motor del tutor o API key</span></button>
+      {!confirmDel
+        ?<button onClick={function(){setConfirmDel(true);}} style={{padding:"14px",borderRadius:12,border:"1px solid #FECACA",background:"#FEF2F2",fontSize:13,fontWeight:700,color:"#B91C1C",cursor:"pointer",textAlign:"left",display:"flex",alignItems:"center",gap:10,fontFamily:"inherit"}}>🗑️ <span>Borrar todo el progreso y claves</span></button>
+        :<div style={{padding:"14px",borderRadius:12,border:"1px solid #FECACA",background:"#FEF2F2"}}>
+          <p style={{fontSize:13,color:"#B91C1C",marginBottom:10}}>¿Seguro? Se borrará todo el progreso e historial de los 3 tracks.</p>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={function(){setConfirmDel(false);}} style={{flex:1,padding:"9px",borderRadius:8,border:"1px solid #E5E7EB",background:"white",fontSize:12,cursor:"pointer",fontFamily:"inherit"}}>Cancelar</button>
+            <button onClick={onClearAll} style={{flex:1,padding:"9px",borderRadius:8,border:"none",background:"#B91C1C",color:"white",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Sí, borrar todo</button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>;
+}
+
+// ─── APP ROOT ──────────────────────────────────────────────────────────────────
+function App(){
+  var [cfg,setCfg]=useLS("aim_cfg_v1",null);
+  var [trackId,setTrackId]=useLS("aim_track_v1",null);
+  var [progMap,setProgMap]=useLS("aim_prog_v1",{});
+  var [view,setView]=useState("home");
+  var [setupMode,setSetupMode]=useState(false);
+  var [trackMode,setTrackMode]=useState(false);
+
+  var needSetup=!cfg||!cfg.apiKey;
+  var needTrack=!trackId;
+
+  function clearAll(){
+    Object.keys(localStorage).filter(function(k){return k.startsWith("aim_")||k.startsWith("chat5_");}).forEach(function(k){localStorage.removeItem(k);});
+    setCfg(null);setTrackId(null);setProgMap({});setSetupMode(true);setTrackMode(false);setView("home");
+  }
+
+  if(needSetup||setupMode) return <Setup onSave={function(provider,apiKey){setCfg({provider,apiKey});setSetupMode(false);}}/>;
+  if(needTrack||trackMode) return <TrackSelector progMap={progMap} onSelect={function(id){setTrackId(id);setTrackMode(false);setView("home");}}/>;
+
+  var track=ALL_TRACKS[trackId];
+  if(!track){setTrackId(null);return null;}
+
+  var activeModId=view.startsWith("m:")?view.slice(2):null;
+  var activeMod=activeModId?track.modules.find(function(m){return m.id===activeModId;}):null;
+
+  // Use per-track progress key
+  var trackProgKey=trackId+"_";
+  function getModProgress(modId){ return progMap[trackProgKey+modId]||{}; }
+  function setModProgress(modId,p){ setProgMap(function(prev){ var next=Object.assign({},prev); next[trackProgKey+modId]=p; return next; }); }
+
+  return <div id="app-shell" style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F0EFE9",maxWidth:520,margin:"0 auto",boxShadow:"0 0 40px rgba(0,0,0,.08)",fontFamily:"inherit",width:"100%"}}>
+
+    <Sidebar track={track} progMap={Object.fromEntries(track.modules.map(function(m){return[m.id,getModProgress(m.id)];}))} activeModId={activeModId} onSelect={function(id){setView("m:"+id);}} onSettings={function(){setView("settings");}} onChangeTrack={function(){setTrackMode(true);}}/>
+
+    <div id="main-panel" style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
+      {/* Mobile nav */}
+      <div id="mobile-nav" style={{position:"sticky",top:0,zIndex:100,background:"rgba(255,255,255,.97)",backdropFilter:"blur(10px)",borderBottom:"1px solid #F3F4F6",padding:"0 14px",height:50,display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+        {view!=="home"&&<button onClick={function(){setView("home");}} style={{background:"none",border:"none",cursor:"pointer",color:"#374151",fontSize:20,padding:"0 6px 0 0",display:"flex",alignItems:"center",flexShrink:0,fontFamily:"inherit"}}>←</button>}
+        <div style={{display:"flex",alignItems:"center",gap:7,flex:1,minWidth:0}}>
+          <div style={{width:26,height:26,borderRadius:7,background:track.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,color:"white",flexShrink:0}}>{track.emoji}</div>
+          <span style={{fontSize:13,fontWeight:700,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{activeMod?activeMod.emoji+" "+activeMod.name:view==="settings"?"Ajustes":track.name+" Bootcamp"}</span>
+        </div>
+        <button onClick={function(){setTrackMode(true);}} style={{fontSize:10,color:track.color,background:track.bg,border:"1px solid "+track.border,borderRadius:20,padding:"3px 8px",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>Cambiar</button>
+      </div>
+
+      {/* Desktop header */}
+      {activeMod&&<div id="desktop-header" style={{display:"none",alignItems:"center",gap:12,padding:"12px 20px",borderBottom:"1px solid #F3F4F6",background:"white",flexShrink:0}}>
+        <div style={{width:38,height:38,borderRadius:10,background:activeMod.color.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>{activeMod.emoji}</div>
+        <div><div style={{fontSize:11,color:"#9CA3AF",fontWeight:700}}>{activeMod.id} · {activeMod.level.toUpperCase()}</div><div style={{fontSize:15,fontWeight:800,color:"#111827"}}>{activeMod.name}</div></div>
+      </div>}
+      {!activeMod&&view==="settings"&&<div id="desktop-header" style={{display:"none",alignItems:"center",gap:10,padding:"12px 20px",borderBottom:"1px solid #F3F4F6",background:"white",flexShrink:0}}><div style={{fontSize:15,fontWeight:800,color:"#111827"}}>⚙️ Ajustes</div></div>}
+
+      <div style={{flex:1,overflow:activeMod?"hidden":"auto",display:"flex",flexDirection:"column",minHeight:0}}>
+        {activeMod?(
+          <ModDetail mod={activeMod} progress={getModProgress(activeMod.id)} onProgress={function(p){setModProgress(activeMod.id,p);}} provider={cfg.provider} apiKey={cfg.apiKey} trackId={trackId}/>
+        ):view==="settings"?(
+          <Settings provider={cfg.provider} onChangeProvider={function(){setSetupMode(true);}} onClearAll={clearAll}/>
+        ):(
+          // Home: module grid for current track
+          <div style={{overflowY:"auto",flex:1,paddingBottom:40}}>
+            <div style={{padding:"20px 16px 14px",borderBottom:"1px solid #E5E7EB",background:"white"}}>
+              <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
+                <div>
+                  <div style={{fontSize:10,fontWeight:700,color:"#9CA3AF",letterSpacing:".08em",textTransform:"uppercase",marginBottom:5}}>{track.name} Bootcamp · 12 semanas · 2–4h/día</div>
+                  <h1 style={{fontSize:20,fontWeight:900,color:"#111827",margin:"0 0 4px",lineHeight:1.2}}>Domina {track.name}</h1>
+                  <p style={{fontSize:12,color:"#6B7280",margin:0}}>{track.desc}</p>
+                </div>
+                <Ring pct={Math.round(track.modules.reduce(function(a,m){var p=getModProgress(m.id);var total=0,done=0;if(m.submodules){m.submodules.forEach(function(s){total+=s.topics.length+s.projects.length;var st=(p.subTopics||{})[s.id]||[];var sp=(p.subProjs||{})[s.id]||{};done+=st.filter(Boolean).length+Object.values(sp).filter(Boolean).length;});}else{total=m.topics.length+m.projects.length;done=(p.topics||[]).filter(Boolean).length+Object.values(p.projects||{}).filter(Boolean).length;}return a+(total>0?Math.round(done/total*100):0);},0)/track.modules.length)} size={56} sw={5} color={track.color}/>
+              </div>
+              <div style={{height:5,background:"#F3F4F6",borderRadius:5,overflow:"hidden",marginTop:12}}>
+                <div style={{height:"100%",width:Math.round(track.modules.reduce(function(a,m){var p=getModProgress(m.id);var total=0,done=0;if(m.submodules){m.submodules.forEach(function(s){total+=s.topics.length+s.projects.length;var st=(p.subTopics||{})[s.id]||[];var sp=(p.subProjs||{})[s.id]||{};done+=st.filter(Boolean).length+Object.values(sp).filter(Boolean).length;});}else{total=m.topics.length+m.projects.length;done=(p.topics||[]).filter(Boolean).length+Object.values(p.projects||{}).filter(Boolean).length;}return a+(total>0?Math.round(done/total*100):0);},0)/track.modules.length)+"%",background:track.color,borderRadius:5,transition:"width .6s"}}/>
+              </div>
+            </div>
+            <div style={{padding:"14px"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",textTransform:"uppercase",letterSpacing:".06em",marginBottom:10}}>Módulos</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {track.modules.map(function(mod){
+                  var p=getModProgress(mod.id);var total=0,done=0;
+                  if(mod.submodules){mod.submodules.forEach(function(s){total+=s.topics.length+s.projects.length;var st=(p.subTopics||{})[s.id]||[];var sp=(p.subProjs||{})[s.id]||{};done+=st.filter(Boolean).length+Object.values(sp).filter(Boolean).length;});}
+                  else{total=mod.topics.length+mod.projects.length;done=(p.topics||[]).filter(Boolean).length+Object.values(p.projects||{}).filter(Boolean).length;}
+                  var pct=total>0?Math.round(done/total*100):0;
+                  return <button key={mod.id} onClick={function(){setView("m:"+mod.id);}} style={{display:"flex",alignItems:"center",gap:12,padding:"13px",borderRadius:14,border:"1.5px solid "+(pct>0?mod.color.b:"#E5E7EB"),background:pct>0?mod.color.bg+"BB":"white",cursor:"pointer",textAlign:"left",transition:"all .15s",width:"100%",fontFamily:"inherit"}}>
+                    <div style={{width:42,height:42,borderRadius:11,background:mod.color.bg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0}}>{mod.emoji}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2,flexWrap:"wrap"}}><span style={{fontSize:9,color:"#9CA3AF",fontWeight:700}}>{mod.id}</span><Pill label={mod.level} color={mod.color.t} bg={mod.color.bg}/>{mod.submodules&&<Pill label="3 sub-mód." color="#6D28D9" bg="#F5F3FF"/>}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#111827",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mod.name}</div>
+                      <div style={{fontSize:11,color:"#6B7280",marginTop:1}}>{mod.weeks} · {mod.hours}</div>
+                    </div>
+                    <div style={{flexShrink:0,display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                      <Ring pct={pct} size={38} sw={3} color={mod.color.t}/>
+                      <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:6,height:6,borderRadius:"50%",background:pct===100?"#22C55E":pct>0?"#F59E0B":"#E5E7EB"}}/><span style={{fontSize:10,color:"#9CA3AF"}}>{pct===100?"Completo":pct>0?"En curso":"Pendiente"}</span></div>
+                    </div>
+                  </button>;
+                })}
+              </div>
+              <button onClick={function(){setView("settings");}} style={{marginTop:14,width:"100%",padding:"11px",borderRadius:10,border:"1px solid #E5E7EB",background:"#F9FAFB",fontSize:12,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit"}}>⚙️ Ajustes (cambiar motor IA, borrar progreso)</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
