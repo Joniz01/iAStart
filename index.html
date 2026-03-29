@@ -56,24 +56,30 @@ const TUTOR_PROVIDERS = {
 };
 
 // ─── GRAMMAR-SAFE ACTION SUFFIX ───────────────────────────────────────────────
-// v2.1: force "Seguir aprendiendo" as first chip, strict grammar rules
 const ACTION_SUFFIX = `
 
-REGLAS DE ESCRITURA OBLIGATORIAS:
-- Escribe SIEMPRE en español neutro, claro y gramaticalmente correcto.
-- NUNCA truncues palabras ni oraciones. Cada palabra y cada oración deben estar completas.
-- NUNCA uses abreviaturas ni cortes de texto. Si se acerca el límite, termina el párrafo actual y detente.
-- Usa vocabulario sencillo y preciso.
+INSTRUCCIONES DE CALIDAD — OBLIGATORIAS ANTES DE RESPONDER:
+Antes de enviar tu respuesta, verifica mentalmente:
+1. ¿Cada palabra está completa y bien escrita? Si no → corrígela.
+2. ¿Cada oración tiene sujeto, verbo y complemento? Si no → complétala.
+3. ¿El texto tiene coherencia semántica de principio a fin? Si no → reescríbelo.
+4. ¿Hay palabras cortadas como "practar", "relev", "escri", "ina"? Si sí → PROHIBIDO enviar.
 
-BLOQUE DE ACCIONES OBLIGATORIO: Al final de CADA respuesta, sin excepción, incluye exactamente:
+REGLAS DE ESCRITURA:
+- Español neutro, formal y gramaticalmente correcto en todo momento.
+- Oraciones cortas y completas. Máximo 25 palabras por oración.
+- Si no puedes completar una idea, termina el párrafo anterior y detente ahí.
+- NUNCA cortes una palabra a mitad. NUNCA dejes una oración sin verbo.
+- NUNCA uses fragmentos como texto válido.
+
+BLOQUE DE ACCIONES OBLIGATORIO al final de CADA respuesta:
 ##ACCIONES##
 1. Seguir aprendiendo el siguiente concepto
-2. [acción para practicar ahora mismo, frase completa, máx 7 palabras]
-3. [pregunta o exploración adicional, frase completa, máx 7 palabras]
+2. [acción práctica concreta, frase completa, máx 6 palabras]
+3. [pregunta de exploración, frase completa, máx 6 palabras]
 ##FIN##
 
-REGLA CRÍTICA: La acción 1 debe ser SIEMPRE exactamente "Seguir aprendiendo el siguiente concepto". NUNCA la cambies.
-NUNCA escribas palabras incompletas. NUNCA omitas ##FIN##.`;
+REGLA CRÍTICA: Acción 1 siempre es exactamente "Seguir aprendiendo el siguiente concepto". NUNCA omitas ##FIN##.`;
 
 const P = {
   blue:  {t:"#1D4ED8",bg:"#EFF6FF",b:"#BFDBFE"},
@@ -285,15 +291,26 @@ async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
   var full="";
   var readStream=async function(res, extract){
     var reader=res.body.getReader(), dec=new TextDecoder();
+    var leftover="";
     while(true){
       var chunk=await reader.read(); if(chunk.done)break;
-      var lines=dec.decode(chunk.value,{stream:true}).split("\n");
+      var text=leftover+dec.decode(chunk.value,{stream:true});
+      var lines=text.split("\n");
+      // Guardar última línea incompleta para el siguiente chunk
+      leftover=lines.pop()||"";
       for(var i=0;i<lines.length;i++){
         if(!lines[i].startsWith("data: "))continue;
         var data=lines[i].slice(6).trim();
         if(!data||data==="[DONE]")continue;
         try{ var t=extract(JSON.parse(data)); if(t){full+=t;onChunk(full);} }catch(e){}
       }
+    }
+    // Procesar cualquier resto final
+    if(leftover&&leftover.startsWith("data: ")){
+      var data=leftover.slice(6).trim();
+      if(data&&data!=="[DONE]"){try{var t=extract(JSON.parse(data));if(t){full+=t;onChunk(full);}}catch(e){}}
+    }
+  };
     }
   };
   if(hasProxy()){
@@ -312,7 +329,7 @@ async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
   } else {
     var msgs=[{role:"system",content:systemPrompt||"Eres un tutor útil."}];
     if(Array.isArray(messages))for(var i=0;i<messages.length;i++)msgs.push({role:messages[i].role,content:messages[i].content});
-    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:"llama-3.3-70b-versatile",max_tokens:4000,temperature:0.4,stream:true,messages:msgs})});
+    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:"llama-3.3-70b-versatile",max_tokens:4000,temperature:0.3,stream:true,messages:msgs})});
     if(!res3.ok){var d3=null;try{d3=await res3.json();}catch(e){}throw new Error((d3&&d3.error&&d3.error.message)||("Groq "+res3.status));}
     await readStream(res3,function(j){return j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;});
   }
@@ -1041,4 +1058,3 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
-
