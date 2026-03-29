@@ -58,14 +58,29 @@ const TUTOR_PROVIDERS = {
 // ─── GRAMMAR-SAFE ACTION SUFFIX ───────────────────────────────────────────────
 const ACTION_SUFFIX = `
 
-ESTILO DE RESPUESTA OBLIGATORIO:
-- Eres un tutor experto. Explica cada concepto con profundidad y claridad.
-- Cada explicación debe tener: definición, por qué importa, ejemplo concreto y ejercicio práctico.
-- Escribe párrafos completos de 3 a 5 oraciones. NO uses frases de 1 sola oración como párrafo.
-- Español neutro, formal y gramaticalmente correcto en todo momento.
-- NUNCA truncues palabras. Si una palabra no cabe completa, termina la oración antes y continúa en la siguiente.
-- NUNCA dejes oraciones sin verbo ni fragmentos de texto sueltos.
-- Las palabras deben estar siempre completas: NUNCA "practar", "relev", "escri", "ina", "deb" ni similares.
+FORMATO OBLIGATORIO — sigue esta estructura para CADA concepto que expliques:
+
+**[Nombre del concepto]**
+Párrafo de definición completa (3 a 5 oraciones). Explica qué es, cómo funciona y por qué existe. Usa lenguaje claro y preciso.
+
+**¿Por qué importa?**
+Párrafo explicando la relevancia práctica para el estudiante (2 a 3 oraciones completas).
+
+**Ejemplo concreto**
+Describe el ejemplo paso a paso en 2 a 4 oraciones. Usa situaciones reales y cotidianas.
+
+**Ejercicio práctico**
+Indica al estudiante exactamente qué debe hacer ahora mismo (2 a 3 oraciones claras y directas).
+
+---
+
+REGLAS DE ESCRITURA — obligatorias en toda respuesta:
+- Usa **negritas** para todos los títulos de sección y para los términos técnicos clave la primera vez que aparecen.
+- Separa cada sección con una línea en blanco para facilitar la lectura.
+- Español neutro, formal y completamente correcto desde el punto de vista gramatical.
+- Cada palabra debe estar siempre completa. Prohibido: "laje", "Capac", "practar", "escri", "relev", "ina", "deb" o cualquier palabra truncada.
+- Cada oración debe tener sujeto, verbo y complemento completos. Nunca escribas fragmentos.
+- Si no puedes completar una oración, cierra el párrafo anterior y detente ahí.
 
 BLOQUE DE ACCIONES OBLIGATORIO al final de CADA respuesta:
 ##ACCIONES##
@@ -74,7 +89,7 @@ BLOQUE DE ACCIONES OBLIGATORIO al final de CADA respuesta:
 3. [pregunta de exploración, frase completa, máx 6 palabras]
 ##FIN##
 
-REGLA CRÍTICA: Acción 1 siempre es exactamente "Seguir aprendiendo el siguiente concepto". NUNCA omitas ##FIN##.`;
+REGLA CRÍTICA: La acción 1 debe ser SIEMPRE exactamente "Seguir aprendiendo el siguiente concepto". NUNCA omitas ##FIN##.`;
 
 const P = {
   blue:  {t:"#1D4ED8",bg:"#EFF6FF",b:"#BFDBFE"},
@@ -1036,18 +1051,4 @@ function App(){
                       </div>
                     </button>;
                   })}
-                </div>
-                <button onClick={function(){setView("settings");}} style={{marginTop:14,width:"100%",padding:"11px",borderRadius:20,border:"1px solid #E5E7EB",background:"#F9FAFB",fontSize:12,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit"}}>⚙️ Ajustes (cambiar motor IA · borrar progreso)</button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  </>;
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
-</body>
-</html>
+          
