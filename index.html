@@ -1051,4 +1051,18 @@ function App(){
                       </div>
                     </button>;
                   })}
-          
+                </div>
+                <button onClick={function(){setView("settings");}} style={{marginTop:14,width:"100%",padding:"11px",borderRadius:20,border:"1px solid #E5E7EB",background:"#F9FAFB",fontSize:12,color:"#6B7280",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,fontFamily:"inherit"}}>⚙️ Ajustes (cambiar motor IA · borrar progreso)</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  </>;
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
