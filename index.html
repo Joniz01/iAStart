@@ -58,19 +58,14 @@ const TUTOR_PROVIDERS = {
 // ─── GRAMMAR-SAFE ACTION SUFFIX ───────────────────────────────────────────────
 const ACTION_SUFFIX = `
 
-INSTRUCCIONES DE CALIDAD — OBLIGATORIAS ANTES DE RESPONDER:
-Antes de enviar tu respuesta, verifica mentalmente:
-1. ¿Cada palabra está completa y bien escrita? Si no → corrígela.
-2. ¿Cada oración tiene sujeto, verbo y complemento? Si no → complétala.
-3. ¿El texto tiene coherencia semántica de principio a fin? Si no → reescríbelo.
-4. ¿Hay palabras cortadas como "practar", "relev", "escri", "ina"? Si sí → PROHIBIDO enviar.
-
-REGLAS DE ESCRITURA:
+ESTILO DE RESPUESTA OBLIGATORIO:
+- Eres un tutor experto. Explica cada concepto con profundidad y claridad.
+- Cada explicación debe tener: definición, por qué importa, ejemplo concreto y ejercicio práctico.
+- Escribe párrafos completos de 3 a 5 oraciones. NO uses frases de 1 sola oración como párrafo.
 - Español neutro, formal y gramaticalmente correcto en todo momento.
-- Oraciones cortas y completas. Máximo 25 palabras por oración.
-- Si no puedes completar una idea, termina el párrafo anterior y detente ahí.
-- NUNCA cortes una palabra a mitad. NUNCA dejes una oración sin verbo.
-- NUNCA uses fragmentos como texto válido.
+- NUNCA truncues palabras. Si una palabra no cabe completa, termina la oración antes y continúa en la siguiente.
+- NUNCA dejes oraciones sin verbo ni fragmentos de texto sueltos.
+- Las palabras deben estar siempre completas: NUNCA "practar", "relev", "escri", "ina", "deb" ni similares.
 
 BLOQUE DE ACCIONES OBLIGATORIO al final de CADA respuesta:
 ##ACCIONES##
@@ -321,13 +316,13 @@ async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
   if(provider==="gemini"){
     var contents=(Array.isArray(messages)&&messages.length>0)?messages.map(function(m){return{role:m.role==="assistant"?"model":"user",parts:[{text:m.content||""}]};}):[{role:"user",parts:[{text:"Inicia."}]}];
     if(contents[contents.length-1].role!=="user")contents.push({role:"user",parts:[{text:"continúa"}]});
-    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:4000,temperature:0.4}})});
+    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:4000,temperature:0.5}})});
     if(!res2.ok){var d2=null;try{d2=await res2.json();}catch(e){}throw new Error((d2&&d2.error&&d2.error.message)||("Gemini "+res2.status));}
     await readStream(res2,function(j){return j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts&&j.candidates[0].content.parts[0]&&j.candidates[0].content.parts[0].text;});
   } else {
     var msgs=[{role:"system",content:systemPrompt||"Eres un tutor útil."}];
     if(Array.isArray(messages))for(var i=0;i<messages.length;i++)msgs.push({role:messages[i].role,content:messages[i].content});
-    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:"llama-3.3-70b-versatile",max_tokens:4000,temperature:0.3,stream:true,messages:msgs})});
+    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:"llama-3.3-70b-versatile",max_tokens:4000,temperature:0.5,stream:true,messages:msgs})});
     if(!res3.ok){var d3=null;try{d3=await res3.json();}catch(e){}throw new Error((d3&&d3.error&&d3.error.message)||("Groq "+res3.status));}
     await readStream(res3,function(j){return j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;});
   }
