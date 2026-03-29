@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>AI Mastery Bootcamp</title>
-<!-- v2.1 — friendlyError quota msg, maxTokens 2800, temp 0.5, clear chat on key change -->
+<!-- v2.2 — maxTokens 4000, temp 0.4, Seguir aprendiendo chip forzado, grammar fix -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -56,24 +56,24 @@ const TUTOR_PROVIDERS = {
 };
 
 // ─── GRAMMAR-SAFE ACTION SUFFIX ───────────────────────────────────────────────
-// v2: explicit grammar rules to prevent word truncation and incomplete sentences
+// v2.1: force "Seguir aprendiendo" as first chip, strict grammar rules
 const ACTION_SUFFIX = `
 
 REGLAS DE ESCRITURA OBLIGATORIAS:
 - Escribe SIEMPRE en español neutro, claro y gramaticalmente correcto.
-- NUNCA truncues palabras. Cada palabra debe estar completa. Revisa antes de continuar.
-- Usa vocabulario sencillo y preciso. Evita anglicismos innecesarios.
-- Las oraciones deben tener sentido completo por sí solas.
+- NUNCA truncues palabras ni oraciones. Cada palabra y cada oración deben estar completas.
+- NUNCA uses abreviaturas ni cortes de texto. Si se acerca el límite, termina el párrafo actual y detente.
+- Usa vocabulario sencillo y preciso.
 
 BLOQUE DE ACCIONES OBLIGATORIO: Al final de CADA respuesta, sin excepción, incluye exactamente:
 ##ACCIONES##
-1. [acción concreta en primera persona, frase completa, máx 7 palabras]
+1. Seguir aprendiendo el siguiente concepto
 2. [acción para practicar ahora mismo, frase completa, máx 7 palabras]
-3. [siguiente paso lógico, frase completa, máx 7 palabras]
+3. [pregunta o exploración adicional, frase completa, máx 7 palabras]
 ##FIN##
 
-Ejemplos correctos: "Dame un ejercicio sobre esto", "Muéstrame el código completo", "Explícame el siguiente tema".
-NUNCA escribas palabras incompletas en las acciones. NUNCA omitas ##FIN##.`;
+REGLA CRÍTICA: La acción 1 debe ser SIEMPRE exactamente "Seguir aprendiendo el siguiente concepto". NUNCA la cambies.
+NUNCA escribas palabras incompletas. NUNCA omitas ##FIN##.`;
 
 const P = {
   blue:  {t:"#1D4ED8",bg:"#EFF6FF",b:"#BFDBFE"},
@@ -306,13 +306,13 @@ async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
   if(provider==="gemini"){
     var contents=(Array.isArray(messages)&&messages.length>0)?messages.map(function(m){return{role:m.role==="assistant"?"model":"user",parts:[{text:m.content||""}]};}):[{role:"user",parts:[{text:"Inicia."}]}];
     if(contents[contents.length-1].role!=="user")contents.push({role:"user",parts:[{text:"continúa"}]});
-    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:2800,temperature:0.5}})});
+    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:4000,temperature:0.4}})});
     if(!res2.ok){var d2=null;try{d2=await res2.json();}catch(e){}throw new Error((d2&&d2.error&&d2.error.message)||("Gemini "+res2.status));}
     await readStream(res2,function(j){return j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts&&j.candidates[0].content.parts[0]&&j.candidates[0].content.parts[0].text;});
   } else {
     var msgs=[{role:"system",content:systemPrompt||"Eres un tutor útil."}];
     if(Array.isArray(messages))for(var i=0;i<messages.length;i++)msgs.push({role:messages[i].role,content:messages[i].content});
-    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:TUTOR_PROVIDERS.groq.model,max_tokens:2800,temperature:0.5,stream:true,messages:msgs})});
+    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:"llama-3.3-70b-versatile",max_tokens:4000,temperature:0.4,stream:true,messages:msgs})});
     if(!res3.ok){var d3=null;try{d3=await res3.json();}catch(e){}throw new Error((d3&&d3.error&&d3.error.message)||("Groq "+res3.status));}
     await readStream(res3,function(j){return j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;});
   }
@@ -364,31 +364,39 @@ function Md({text}){
   return <div>{els}</div>;
 }
 
-// ─── ACTION CHIPS (v2: compact bubble style) ──────────────────────────────────
+// ─── ACTION CHIPS (v2.1: "Seguir aprendiendo" siempre primer botón destacado) ──
 function ActionChips({actions,color,bg,border,onAction,disabled}){
   if(!actions||!actions.length)return null;
+  // Garantizar que el primer chip siempre sea "Seguir aprendiendo"
+  var SEGUIR = "Seguir aprendiendo el siguiente concepto";
+  var chips = actions.slice();
+  if(!chips[0]||!chips[0].toLowerCase().includes("seguir")){
+    chips = [SEGUIR].concat(chips.filter(function(a){return !a.toLowerCase().includes("seguir");})).slice(0,4);
+  } else {
+    chips[0] = SEGUIR;
+  }
   var icons=["▶","→","→","→"];
   return <div style={{marginTop:8,padding:"8px 10px",background:"#F8FAFC",borderRadius:10,border:"1px solid #E2E8F0"}}>
     <div style={{fontSize:10,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>
       ¿Qué quieres hacer ahora?
     </div>
     <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-      {actions.map(function(a,i){
+      {chips.map(function(a,i){
         var isPrimary=i===0;
         return <button key={i} onClick={function(){if(!disabled)onAction(a);}} disabled={disabled}
           style={{
             display:"inline-flex",alignItems:"center",gap:5,
-            padding:"6px 11px",borderRadius:20,cursor:disabled?"not-allowed":"pointer",
+            padding:isPrimary?"8px 16px":"6px 11px",borderRadius:20,cursor:disabled?"not-allowed":"pointer",
             border:"1.5px solid "+(isPrimary?color:border||"#E2E8F0"),
             background:isPrimary?color:bg||"white",
             color:isPrimary?"white":color,
-            fontSize:12,fontWeight:isPrimary?700:500,
+            fontSize:isPrimary?13:12,fontWeight:isPrimary?700:500,
             opacity:disabled?.5:1,transition:"all .12s",
             fontFamily:"inherit",lineHeight:1.3,
-            boxShadow:isPrimary?"0 2px 6px "+color+"30":"none",
+            boxShadow:isPrimary?"0 3px 10px "+color+"40":"none",
             maxWidth:"100%",textAlign:"left",
           }}>
-          <span style={{fontSize:10,flexShrink:0}}>{icons[i]}</span>
+          <span style={{fontSize:isPrimary?12:10,flexShrink:0}}>{icons[i]}</span>
           <span style={{whiteSpace:"normal",wordBreak:"break-word"}}>{a}</span>
         </button>;
       })}
@@ -1033,3 +1041,4 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
 </body>
 </html>
+
