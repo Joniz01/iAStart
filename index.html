@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>AI Mastery Bootcamp</title>
-<!-- v2.0 — Welcome guide, compact action chips, grammar fix, max_tokens 1800 -->
+<!-- v2.1 — friendlyError quota msg, maxTokens 2800, temp 0.5, clear chat on key change -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -261,6 +261,24 @@ function getDefaultActions(modId) {
   return map[modId]||map[prefix]||["Continúa al siguiente tema","Dame un ejercicio práctico","Explícame con más detalle"];
 }
 
+function friendlyError(msg, provider) {
+  if (!msg) return "Error desconocido";
+  var m = msg.toLowerCase();
+  // Quota / rate limit — causa más común de confusión
+  if (m.includes("quota") || m.includes("rate") || m.includes("limit") || m.includes("429") || m.includes("resource_exhausted")) {
+    if (provider === "gemini") {
+      return "⚠️ Cuota agotada en esta API Key de Gemini.\n\n" +
+        "SOLUCIÓN: Ve a aistudio.google.com → crea una key nueva eligiendo «Create API key in NEW project» (no en un proyecto existente). " +
+        "Si el error persiste con una key nueva, el proyecto de Google Cloud ya tiene cuota 0 — debes crear un proyecto GCP completamente nuevo.";
+    }
+    return "⚠️ Límite de requests alcanzado. Espera 1 minuto e intenta de nuevo, o cambia tu API key en Ajustes.";
+  }
+  if (m.includes("invalid") || m.includes("401") || m.includes("api key") || m.includes("unauthenticated")) {
+    return "🔑 API Key inválida o revocada. Ve a Ajustes y reemplázala por una key nueva válida.";
+  }
+  return msg;
+}
+
 function hasProxy(){ return window.location.protocol==="https:"||window.location.hostname==="localhost"; }
 
 async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
@@ -288,13 +306,13 @@ async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
   if(provider==="gemini"){
     var contents=(Array.isArray(messages)&&messages.length>0)?messages.map(function(m){return{role:m.role==="assistant"?"model":"user",parts:[{text:m.content||""}]};}):[{role:"user",parts:[{text:"Inicia."}]}];
     if(contents[contents.length-1].role!=="user")contents.push({role:"user",parts:[{text:"continúa"}]});
-    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:1800,temperature:0.65}})});
+    var res2=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key="+apiKey,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({systemInstruction:systemPrompt?{parts:[{text:systemPrompt}]}:undefined,contents,generationConfig:{maxOutputTokens:2800,temperature:0.5}})});
     if(!res2.ok){var d2=null;try{d2=await res2.json();}catch(e){}throw new Error((d2&&d2.error&&d2.error.message)||("Gemini "+res2.status));}
     await readStream(res2,function(j){return j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts&&j.candidates[0].content.parts[0]&&j.candidates[0].content.parts[0].text;});
   } else {
     var msgs=[{role:"system",content:systemPrompt||"Eres un tutor útil."}];
     if(Array.isArray(messages))for(var i=0;i<messages.length;i++)msgs.push({role:messages[i].role,content:messages[i].content});
-    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:TUTOR_PROVIDERS.groq.model,max_tokens:1800,temperature:0.65,stream:true,messages:msgs})});
+    var res3=await fetch("https://api.groq.com/openai/v1/chat/completions",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+apiKey},body:JSON.stringify({model:TUTOR_PROVIDERS.groq.model,max_tokens:2800,temperature:0.5,stream:true,messages:msgs})});
     if(!res3.ok){var d3=null;try{d3=await res3.json();}catch(e){}throw new Error((d3&&d3.error&&d3.error.message)||("Groq "+res3.status));}
     await readStream(res3,function(j){return j.choices&&j.choices[0]&&j.choices[0].delta&&j.choices[0].delta.content;});
   }
@@ -561,9 +579,7 @@ function Chat({mod,provider,apiKey,trackId}){
       setActions(acts);
     }).catch(function(e){
       setStreaming("");
-      var msg=e.message||"Error";
-      if(msg.includes("401")||msg.toLowerCase().includes("invalid"))msg="❌ API key inválida. Ve a Ajustes y verifica tu clave en "+(provider==="gemini"?"aistudio.google.com":"console.groq.com");
-      else if(msg.includes("429"))msg="⏳ Límite alcanzado. Espera un momento e intenta de nuevo.";
+      var msg=friendlyError(e.message||"Error", provider);
       var acts=getDefaultActions(mod.id);
       setMsgs(history.concat([{role:"user",content:userMsg},{role:"assistant",content:"⚠️ "+msg,cleanText:"⚠️ "+msg,actions:acts}]));
       setActions(acts);
@@ -914,7 +930,11 @@ function App(){
   }
 
   if(showGuide) return <GuideScreen onClose={function(){setShowGuide(false);}}/>;
-  if(needSetup||setupMode) return <Setup onSave={function(provider,apiKey){setCfg({provider,apiKey});setSetupMode(false);}} onGuide={function(){setShowGuide(true);}}/>;
+  if(needSetup||setupMode) return <Setup onSave={function(provider,apiKey){
+    // Limpiar todos los chats guardados al cambiar de key/provider — evita usar sesiones de la key anterior
+    Object.keys(localStorage).filter(function(k){return k.startsWith("chat5_");}).forEach(function(k){localStorage.removeItem(k);});
+    setCfg({provider,apiKey});setSetupMode(false);
+  }} onGuide={function(){setShowGuide(true);}}/>;
   if(needTrack||trackMode) return <TrackSelector progMap={progMap} onSelect={function(id){setTrackId(id);setTrackMode(false);setView("home");}} onGuide={function(){setShowGuide(true);}}/>;
 
   var track=ALL_TRACKS[trackId];
