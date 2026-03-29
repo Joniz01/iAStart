@@ -38,8 +38,8 @@ export default async function handler(req) {
     "X-Accel-Buffering": "no",
   };
 
-  // Increased to 1800 tokens to prevent word truncation mid-response
-  const MAX_TOKENS = 1800;
+  // v2.1 — Increased to 2800 tokens to prevent sentence truncation
+  const MAX_TOKENS = 2800;
 
   try {
     if (provider === "gemini") {
