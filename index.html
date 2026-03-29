@@ -311,8 +311,6 @@ async function streamAI({ provider, apiKey, systemPrompt, messages, onChunk }) {
       if(data&&data!=="[DONE]"){try{var t=extract(JSON.parse(data));if(t){full+=t;onChunk(full);}}catch(e){}}
     }
   };
-    }
-  };
   if(hasProxy()){
     var res=await fetch("/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({provider,apiKey,systemPrompt,messages})});
     if(!res.ok){var d=null;try{d=await res.json();}catch(e){}throw new Error((d&&d.error)||("HTTP "+res.status));}
