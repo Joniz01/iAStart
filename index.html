@@ -58,38 +58,78 @@ const TUTOR_PROVIDERS = {
 // ─── GRAMMAR-SAFE ACTION SUFFIX ───────────────────────────────────────────────
 const ACTION_SUFFIX = `
 
-FORMATO OBLIGATORIO — sigue esta estructura para CADA concepto que expliques:
+═══════════════════════════════════════
+SISTEMA DE ENSEÑANZA — MICROLEARNING PASO A PASO
+═══════════════════════════════════════
 
-**[Nombre del concepto]**
-Párrafo de definición completa (3 a 5 oraciones). Explica qué es, cómo funciona y por qué existe. Usa lenguaje claro y preciso.
-
-**¿Por qué importa?**
-Párrafo explicando la relevancia práctica para el estudiante (2 a 3 oraciones completas).
-
-**Ejemplo concreto**
-Describe el ejemplo paso a paso en 2 a 4 oraciones. Usa situaciones reales y cotidianas.
-
-**Ejercicio práctico**
-Indica al estudiante exactamente qué debe hacer ahora mismo (2 a 3 oraciones claras y directas).
+ESTRUCTURA DE SESIÓN:
+Cuando el alumno inicia un módulo, presenta primero un índice numerado de todos los pasos de la sesión, así:
 
 ---
+📚 **Sesión: [Nombre del módulo]**
+Cubriremos [N] temas en esta sesión:
+1. [Tema 1]
+2. [Tema 2]
+...
+N. [Tema N]
 
-REGLAS DE ESCRITURA — obligatorias en toda respuesta:
-- Usa **negritas** para todos los títulos de sección y para los términos técnicos clave la primera vez que aparecen.
-- Separa cada sección con una línea en blanco para facilitar la lectura.
-- Español neutro, formal y completamente correcto desde el punto de vista gramatical.
-- Cada palabra debe estar siempre completa. Prohibido: "laje", "Capac", "practar", "escri", "relev", "ina", "deb" o cualquier palabra truncada.
-- Cada oración debe tener sujeto, verbo y complemento completos. Nunca escribas fragmentos.
-- Si no puedes completar una oración, cierra el párrafo anterior y detente ahí.
+Empecemos con el **Paso 1**.
+---
+
+Luego desarrolla UN SOLO PASO por respuesta. Avanza al siguiente paso solo cuando el alumno haga clic en "Siguiente paso →".
+
+═══════════════════════════════════════
+FORMATO DE CADA PASO:
+═══════════════════════════════════════
+
+**Paso [N] de [Total] — [Nombre del tema]**
+
+Explicación clara y fluida del concepto en 3 a 5 párrafos. Escribe como un instructor que habla directamente al alumno. Usa analogías del mundo real. Conecta el concepto con lo que el alumno ya sabe del paso anterior (si aplica).
+
+Cuando el tema tenga un demo o herramienta disponible, incluye el link inline así:
+"Puedes probarlo ahora mismo en [Google AI Studio](https://aistudio.google.com) — es gratuito y no requiere instalación."
+
+---
+📚 **Recursos de este paso**
+- 📖 [Título del recurso oficial](URL_real) — documentación o guía
+- 🎬 [Título del video](URL_youtube_real) — solo si existe un video oficial relevante
+- 🛠️ [Nombre del demo](URL_real) — playground o herramienta interactiva
+- 💻 [Nombre del repo](URL_github_real) — solo si hay código de ejemplo relevante
+
+Solo incluye recursos que existan y sean relevantes. Si no hay video oficial, omite esa línea. Usa únicamente URLs reales y verificables.
+
+═══════════════════════════════════════
+EJERCICIO DE CIERRE DE MÓDULO:
+═══════════════════════════════════════
+
+Solo cuando el alumno haya completado TODOS los pasos del módulo, presenta UN ejercicio integrador así:
+
+---
+🎯 **Ejercicio final — [Nombre del módulo]**
+
+[Descripción del reto en 3 a 5 oraciones. Debe integrar todos los conceptos vistos. Debe ser algo que el alumno pueda hacer ahora mismo, sin herramientas adicionales.]
+
+**Lo que debes entregar:** [descripción concreta del resultado esperado]
+**Criterio de éxito:** [cómo saber si lo hizo bien]
+---
+
+═══════════════════════════════════════
+REGLAS DE ESCRITURA — OBLIGATORIAS:
+═══════════════════════════════════════
+- Español neutro, fluido y gramaticalmente correcto en todo momento.
+- Usa **negritas** para términos técnicos clave la primera vez que aparecen.
+- Cada palabra debe estar SIEMPRE completa. Prohibido: palabras cortadas a mitad.
+- Cada oración debe tener sujeto, verbo y complemento. Sin fragmentos.
+- NO uses la estructura rígida de 4 secciones. El contenido debe fluir naturalmente.
 
 BLOQUE DE ACCIONES OBLIGATORIO al final de CADA respuesta:
 ##ACCIONES##
-1. Seguir aprendiendo el siguiente concepto
-2. [acción práctica concreta, frase completa, máx 6 palabras]
-3. [pregunta de exploración, frase completa, máx 6 palabras]
+1. Siguiente paso →
+2. [opción relacionada con el tema actual, máx 5 palabras]
+3. [pregunta o exploración del tema, máx 5 palabras]
 ##FIN##
 
-REGLA CRÍTICA: La acción 1 debe ser SIEMPRE exactamente "Seguir aprendiendo el siguiente concepto". NUNCA omitas ##FIN##.`;
+REGLA CRÍTICA: La acción 1 es SIEMPRE "Siguiente paso →" excepto en el último paso del módulo, donde debe ser "Ver el ejercicio final 🎯". NUNCA omitas ##FIN##.`;
 
 const P = {
   blue:  {t:"#1D4ED8",bg:"#EFF6FF",b:"#BFDBFE"},
@@ -367,10 +407,13 @@ function Md({text}){
   text=text||"";
   var lines=text.split("\n"),els=[],inCode=false,codeLines=[],lang="",i=0;
   function inline(str,k){
-    var parts=str.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
+    // Soporta: **negrita**, `código`, [texto](url)
+    var parts=str.split(/(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g);
     return <span key={k}>{parts.map(function(p,j){
       if(p.startsWith("**")&&p.endsWith("**"))return<strong key={j} style={{fontWeight:700}}>{p.slice(2,-2)}</strong>;
       if(p.startsWith("`")&&p.endsWith("`"))return<code key={j} style={{background:"#F1F5F9",color:"#0F172A",padding:"1px 5px",borderRadius:4,fontSize:".88em",fontFamily:"monospace"}}>{p.slice(1,-1)}</code>;
+      var lm=p.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if(lm)return<a key={j} href={lm[2]} target="_blank" rel="noreferrer" style={{color:"#1D4ED8",textDecoration:"underline",fontWeight:500}}>{lm[1]}</a>;
       return p;
     })}</span>;
   }
@@ -382,25 +425,31 @@ function Md({text}){
     } else if(inCode){codeLines.push(l);}
     else if(l.match(/^#{1,3} /)){var lv=l.match(/^(#+)/)[1].length,txt=l.replace(/^#+\s/,"");els.push(<div key={i} style={{fontWeight:700,fontSize:lv===1?16:lv===2?14:13,color:"#111827",margin:"12px 0 4px"}}>{inline(txt,0)}</div>);}
     else if(l.match(/^[-*] /)){els.push(<div key={i} style={{display:"flex",gap:8,margin:"3px 0"}}><span style={{color:"#9CA3AF",flexShrink:0,marginTop:2}}>•</span><span style={{fontSize:13,color:"#374151",lineHeight:1.6}}>{inline(l.slice(2),0)}</span></div>);}
-    else if(l.trim()===""){els.push(<div key={i} style={{height:5}}/>);}
+    else if(l.startsWith("---")){els.push(<hr key={i} style={{border:"none",borderTop:"1px solid #E5E7EB",margin:"10px 0"}}/>);}
+    else if(l.trim()===""){els.push(<div key={i} style={{height:6}}/>);}
     else{els.push(<p key={i} style={{margin:"3px 0",fontSize:13,color:"#374151",lineHeight:1.7}}>{inline(l,0)}</p>);}
     i++;
   }
   return <div>{els}</div>;
 }
 
-// ─── ACTION CHIPS (v2.1: "Seguir aprendiendo" siempre primer botón destacado) ──
+// ─── ACTION CHIPS (v2.2: Siguiente paso como chip primario) ──────────────────
 function ActionChips({actions,color,bg,border,onAction,disabled}){
   if(!actions||!actions.length)return null;
-  // Garantizar que el primer chip siempre sea "Seguir aprendiendo"
-  var SEGUIR = "Seguir aprendiendo el siguiente concepto";
+  var SIGUIENTE = "Siguiente paso →";
+  var EJERCICIO  = "Ver el ejercicio final 🎯";
   var chips = actions.slice();
-  if(!chips[0]||!chips[0].toLowerCase().includes("seguir")){
-    chips = [SEGUIR].concat(chips.filter(function(a){return !a.toLowerCase().includes("seguir");})).slice(0,4);
-  } else {
-    chips[0] = SEGUIR;
+  // Si el modelo no puso el chip primario correcto, lo inyectamos
+  var primerOk = chips[0] && (
+    chips[0].toLowerCase().includes("siguiente") ||
+    chips[0].toLowerCase().includes("ejercicio final")
+  );
+  if(!primerOk){
+    chips = [SIGUIENTE].concat(chips.filter(function(a){
+      return !a.toLowerCase().includes("siguiente") && !a.toLowerCase().includes("ejercicio final");
+    })).slice(0,3);
   }
-  var icons=["▶","→","→","→"];
+  var icons=["▶","→","→"];
   return <div style={{marginTop:8,padding:"8px 10px",background:"#F8FAFC",borderRadius:10,border:"1px solid #E2E8F0"}}>
     <div style={{fontSize:10,fontWeight:700,color:"#94A3B8",textTransform:"uppercase",letterSpacing:".06em",marginBottom:6}}>
       ¿Qué quieres hacer ahora?
@@ -421,7 +470,7 @@ function ActionChips({actions,color,bg,border,onAction,disabled}){
             boxShadow:isPrimary?"0 3px 10px "+color+"40":"none",
             maxWidth:"100%",textAlign:"left",
           }}>
-          <span style={{fontSize:isPrimary?12:10,flexShrink:0}}>{icons[i]}</span>
+          <span style={{fontSize:isPrimary?12:10,flexShrink:0}}>{icons[i]||"→"}</span>
           <span style={{whiteSpace:"normal",wordBreak:"break-word"}}>{a}</span>
         </button>;
       })}
