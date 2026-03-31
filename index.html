@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
 <title>AI Mastery Bootcamp</title>
-<!-- v2.2 — maxTokens 4000, temp 0.4, Seguir aprendiendo chip forzado, grammar fix -->
+<!-- v6.0 — Microlearning paso a paso, links inline + sección recursos, ejercicio único de cierre, renderer Md con links, chips dinámicos Siguiente paso / Ejercicio final -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -22,6 +22,7 @@ textarea,input,button{font-family:inherit;}
 .slide-in{animation:slideIn .3s ease forwards;}
 @media(min-width:768px){
   #app-shell{flex-direction:row!important;max-width:1200px!important;box-shadow:0 0 60px rgba(0,0,0,.07)!important;}
+  #sidebar-wrapper{display:flex!important;flex-shrink:0!important;transition:width .25s ease;}
   #sidebar{display:flex!important;width:280px!important;min-width:260px;flex-shrink:0!important;border-right:1px solid #E5E7EB;}
   #mobile-nav{display:none!important;}
   #desktop-header{display:flex!important;}
@@ -29,6 +30,7 @@ textarea,input,button{font-family:inherit;}
 @media(max-width:767px){
   #desktop-header{display:none!important;}
   #sidebar{display:none!important;}
+  #sidebar-wrapper{display:none!important;}
 }
 </style>
 </head>
@@ -145,7 +147,32 @@ const P = {
 
 // ─── CLAUDE MODULES ───────────────────────────────────────────────────────────
 const CLAUDE_MODULES = [
-  {id:"C00",emoji:"🧠",name:"Fundamentos de Claude",sub:"Cómo piensa Claude, tokens, context window, primeros prompts",weeks:"1 semana",hours:"14–28h",color:P.blue,level:"Básico",
+  {id:"C00",emoji:"🧠",name:"Fundamentos de Claude",sub:"Cómo piensa Claude, tokens, context window, interfaz completa y primeros prompts",weeks:"1 semana",hours:"14–28h",color:P.blue,level:"Básico",
+   system:"Eres un tutor experto en Claude de Anthropic. Módulo C00 — Fundamentos. Nivel: básico. Cubre tanto los conceptos técnicos como el uso completo de la interfaz de claude.ai: chats, proyectos, artefactos, personalización y Claude Code. Guía con ejercicios prácticos claros."+ACTION_SUFFIX,
+   topics:[
+     "¿Qué es Claude y cómo funciona internamente?",
+     "Tokens: qué son y cómo afectan tu uso",
+     "Anatomía del prompt: rol, tarea, contexto y formato",
+     "Context window: límites y estrategias",
+     "Modelos: Haiku, Sonnet y Opus — diferencias clave",
+     "Interfaz claude.ai: nuevo chat, búsqueda y navegación",
+     "Proyectos: crear, organizar y usar contexto persistente",
+     "Artefactos: qué son, cuándo aparecen y cómo usarlos",
+     "Personalizar: instrucciones permanentes y preferencias",
+     "Claude Code: qué es y primeros pasos desde la interfaz",
+     "Gestión del historial de conversaciones",
+     "Temperatura y parámetros de creatividad",
+   ],
+   projects:[
+     {t:"Experimento de tono",d:"Mismo prompt, 5 variaciones — documenta los cambios",tag:"Exploración"},
+     {t:"Proyecto de estudio",d:"Crea un Proyecto con contexto de tu área y hazle preguntas",tag:"Proyectos"},
+     {t:"Tu primer Artefacto",d:"Pide a Claude que genere una tabla o gráfico interactivo",tag:"Artefactos"},
+     {t:"Personalización completa",d:"Configura tus instrucciones permanentes y prueba el resultado",tag:"Personalizar"},
+   ]},
+  {id:"C01",emoji:"⚡",name:"Prompt Engineering avanzado",sub:"CoT, few-shot, XML tags, chaining y debugging",weeks:"2 semanas",hours:"28–56h",color:P.green,level:"Intermedio",
+   system:"Eres un experto en Prompt Engineering para Claude. Módulo C01. Enseña: CoT, few-shot, XML tags, role prompting y chaining. Muestra prompts antes y después de mejorarlos. Cuando el estudiante comparta un prompt, analízalo y sugiere mejoras concretas."+ACTION_SUFFIX,
+   topics:["Zero-shot, few-shot y many-shot prompting","Chain of Thought (CoT) y Tree of Thought","Role prompting: personas y expertos ficticios","XML tags para estructurar prompts complejos","System prompts: diseño y buenas prácticas","Prompt chaining: dividir tareas grandes","Negative prompting: qué evitar","Evaluación y depuración de prompts","Prompts para código y análisis de datos","Librerías de prompts reutilizables"],
+   projects:[{t:"Biblioteca de prompts",d:"20 prompts reutilizables por caso de uso",tag:"Librería"},{t:"Pipeline de análisis",d:"Cadena de 4 pasos: extrae, limpia, analiza, visualiza",tag:"Pipeline"},{t:"Corrector de prompts",d:"Corrige 3 prompts con errores en menos de 3 intentos",tag:"Depuración"}]},
    system:"Eres un tutor experto en Claude de Anthropic. Módulo C00 — Fundamentos. Nivel: básico. Guía con ejercicios prácticos claros. Al explicar un concepto, incluye un ejercicio que el estudiante pueda hacer de inmediato."+ACTION_SUFFIX,
    topics:["¿Qué es Claude y cómo funciona internamente?","Tokens: qué son y cómo afectan tu uso","Anatomía del prompt: rol, tarea, contexto y formato","Context window: límites y estrategias","Modelos: Haiku, Sonnet y Opus — diferencias clave","Claude.ai: interfaz, atajos y funciones avanzadas","Gestión del historial de conversaciones","Temperatura y parámetros de creatividad"],
    projects:[{t:"Experimento de tono",d:"Mismo prompt, 5 variaciones — documenta los cambios",tag:"Exploración"},{t:"Mapa del context window",d:"Visualiza cuándo Claude olvida información",tag:"Análisis"},{t:"Comparativa de modelos",d:"Misma tarea en Haiku, Sonnet y Opus",tag:"Benchmark"}]},
@@ -186,10 +213,28 @@ const CLAUDE_MODULES = [
 
 // ─── GROK MODULES ─────────────────────────────────────────────────────────────
 const GROK_MODULES = [
-  {id:"G00",emoji:"🤖",name:"Fundamentos de Grok y xAI",sub:"Qué es Grok, Think mode, interfaces y primeros prompts",weeks:"1 semana",hours:"14–28h",color:P.gray,level:"Básico",
-   system:"Eres tutor experto en Grok de xAI. Módulo G00 — Fundamentos. Explica qué es Grok, qué lo hace único, cómo usar Think mode y cómo sacarle el máximo provecho desde el inicio. Usa ejercicios prácticos."+ACTION_SUFFIX,
-   topics:["¿Qué es Grok y qué lo hace único?","xAI: la empresa detrás de Grok","Grok vs ChatGPT vs Claude vs Gemini","Think mode: razonamiento paso a paso","Interfaz grok.com: funciones y atajos","Grok en X (Twitter): integración nativa","Modelos disponibles: Grok-2 y Grok-3","Personalidad y estilo de Grok","Capacidades y límites actuales","Primeros prompts efectivos con Grok"],
-   projects:[{t:"Comparativa de modelos",d:"Misma tarea en Grok-2 y Grok-3 — documenta las diferencias",tag:"Benchmark"},{t:"Think mode en acción",d:"Compara respuesta con y sin Think mode en un problema complejo",tag:"Análisis"},{t:"Grok en X",d:"Usa Grok desde X para analizar 5 publicaciones virales",tag:"Exploración"}]},
+  {id:"G00",emoji:"🤖",name:"Fundamentos de Grok y xAI",sub:"Qué es Grok, Think mode, interfaz completa y primeros prompts",weeks:"1 semana",hours:"14–28h",color:P.gray,level:"Básico",
+   system:"Eres tutor experto en Grok de xAI. Módulo G00 — Fundamentos. Cubre qué es Grok, Think mode, la interfaz completa de grok.com, el acceso desde X (Twitter), la configuración de cuenta y los primeros prompts efectivos. Usa ejercicios prácticos."+ACTION_SUFFIX,
+   topics:[
+     "¿Qué es Grok y qué lo hace único?",
+     "xAI: la empresa detrás de Grok",
+     "Grok vs ChatGPT vs Claude vs Gemini",
+     "Think mode: razonamiento paso a paso",
+     "Interfaz grok.com: funciones, atajos y navegación completa",
+     "Grok en X (Twitter): integración nativa y cómo activarlo",
+     "X Premium: planes, acceso a Grok y funciones exclusivas",
+     "Grok en móvil: app de X y acceso directo",
+     "Personalización: instrucciones y preferencias en Grok",
+     "Modelos disponibles: Grok-2 y Grok-3",
+     "Capacidades y límites actuales",
+     "Primeros prompts efectivos con Grok",
+   ],
+   projects:[
+     {t:"Comparativa de modelos",d:"Misma tarea en Grok-2 y Grok-3 — documenta las diferencias",tag:"Benchmark"},
+     {t:"Think mode en acción",d:"Compara respuesta con y sin Think mode en un problema complejo",tag:"Análisis"},
+     {t:"Grok en X",d:"Usa Grok desde X para analizar 5 publicaciones virales",tag:"Exploración"},
+     {t:"Personalización completa",d:"Configura instrucciones permanentes y prueba el resultado",tag:"Configuración"},
+   ]},
   {id:"G01",emoji:"💭",name:"Think Mode y razonamiento avanzado",sub:"Razonamiento paso a paso, problemas complejos y matemáticas",weeks:"2 semanas",hours:"28–56h",color:P.blue,level:"Intermedio",
    system:"Eres experto en Think Mode de Grok y razonamiento avanzado. Módulo G01. Enseña cómo aprovechar el razonamiento paso a paso para resolver problemas lógicos, matemáticos y de programación."+ACTION_SUFFIX,
    topics:["Think mode: cómo funciona internamente","Cuándo activar y cuándo desactivar Think mode","Matemáticas y lógica con Grok","Resolución de problemas de programación","Análisis de datos paso a paso","Razonamiento causal y contrafactual","Comparar Think mode vs respuesta directa","Límites del razonamiento de Grok","Prompts para sacar el máximo a Think mode","Casos de uso óptimos para Think mode"],
@@ -227,10 +272,28 @@ const GROK_MODULES = [
 
 // ─── GEMINI MODULES ───────────────────────────────────────────────────────────
 const GEMINI_MODULES = [
-  {id:"GEM00",emoji:"💎",name:"Fundamentos de Gemini",sub:"Google AI, modelos Gemini, primeros prompts y multimodal",weeks:"1 semana",hours:"14–28h",color:P.blue,level:"Básico",
-   system:"Eres tutor experto en Google Gemini. Módulo GEM00 — Fundamentos. Explica la familia de modelos Gemini, las capacidades multimodales desde el inicio y las diferencias con otros LLMs. Usa ejercicios prácticos y claros."+ACTION_SUFFIX,
-   topics:["¿Qué es Gemini y la familia de modelos?","Google DeepMind: quién lo construye","Gemini Nano, Flash, Pro y Ultra — diferencias","Multimodal nativo: texto, imágenes y audio","gemini.google.com: interfaz completa","Gemini en dispositivos móviles","Gemini vs ChatGPT vs Claude vs Grok","Ventana de contexto de 1 millón de tokens","Primeros prompts efectivos","Integración con tu cuenta de Google"],
-   projects:[{t:"Comparativa de modelos",d:"Flash vs Pro en la misma tarea — velocidad y calidad",tag:"Benchmark"},{t:"Análisis multimodal",d:"Sube una imagen con texto y analiza la respuesta de Gemini",tag:"Multimodal"},{t:"Contexto largo en acción",d:"Sube un PDF extenso y haz preguntas específicas",tag:"Contexto"}]},
+  {id:"GEM00",emoji:"💎",name:"Fundamentos de Gemini",sub:"Google AI, modelos Gemini, interfaz completa, Gemini Live y primeros prompts",weeks:"1 semana",hours:"14–28h",color:P.blue,level:"Básico",
+   system:"Eres tutor experto en Google Gemini. Módulo GEM00 — Fundamentos. Cubre la familia de modelos, la interfaz completa de gemini.google.com, Gemini Live, acceso en móvil, Google One AI Premium y las diferencias con otros LLMs. Usa ejercicios prácticos."+ACTION_SUFFIX,
+   topics:[
+     "¿Qué es Gemini y la familia de modelos?",
+     "Google DeepMind: quién lo construye",
+     "Gemini Nano, Flash, Pro y Ultra — diferencias",
+     "Multimodal nativo: texto, imágenes, audio y video",
+     "gemini.google.com: interfaz completa, navegación y funciones",
+     "Gemini Live: conversación en tiempo real con voz",
+     "Gemini en móvil: app Android e iOS",
+     "Gemini en Chrome: asistente integrado en el navegador",
+     "Google One AI Premium: qué incluye y cuándo vale la pena",
+     "Gemini vs ChatGPT vs Claude vs Grok",
+     "Ventana de contexto de 1 millón de tokens",
+     "Integración con tu cuenta de Google y datos personales",
+   ],
+   projects:[
+     {t:"Comparativa de modelos",d:"Flash vs Pro en la misma tarea — velocidad y calidad",tag:"Benchmark"},
+     {t:"Análisis multimodal",d:"Sube una imagen con texto y analiza la respuesta de Gemini",tag:"Multimodal"},
+     {t:"Gemini Live en práctica",d:"Mantén una conversación de voz sobre un tema técnico",tag:"Live"},
+     {t:"Contexto largo en acción",d:"Sube un PDF extenso y haz preguntas específicas",tag:"Contexto"},
+   ]},
   {id:"GEM01",emoji:"💡",name:"Gems: agentes personalizados",sub:"Crear, configurar y publicar Gems especializados",weeks:"2 semanas",hours:"28–56h",color:P.green,level:"Intermedio",
    system:"Eres experto en Gems de Google Gemini. Módulo GEM01. Enseña a crear, configurar y usar Gems (agentes personalizados de Gemini). Proporciona ejemplos reales y funcionales."+ACTION_SUFFIX,
    topics:["¿Qué son los Gems?","Gems prediseñados por Google","Crear tu primer Gem personalizado","System prompt para Gems","Nombre, personalidad e instrucciones","Gems para productividad personal","Gems para equipos de trabajo","Compartir Gems con otros usuarios","Gems vs GPTs de OpenAI vs Proyectos de Claude","Casos de uso: tutor, asistente y coach"],
@@ -1002,6 +1065,7 @@ function App(){
   var [setupMode,setSetupMode]=useState(false);
   var [trackMode,setTrackMode]=useState(false);
   var [showGuide,setShowGuide]=useState(false);
+  var [sidebarCollapsed,setSidebarCollapsed]=useLS("aim_sidebar_collapsed",false);
 
   var needSetup=!cfg||!cfg.apiKey;
   var needTrack=!trackId;
@@ -1041,7 +1105,34 @@ function App(){
     {showGuide&&<GuideScreen onClose={function(){setShowGuide(false);}}/> }
     <div id="app-shell" style={{display:"flex",flexDirection:"column",height:"100vh",background:"#F0EFE9",maxWidth:520,margin:"0 auto",boxShadow:"0 0 40px rgba(0,0,0,.08)",fontFamily:"inherit",width:"100%"}}>
 
-      <Sidebar track={track} progMap={Object.fromEntries(track.modules.map(function(m){return[m.id,getModProgress(m.id)];}))} activeModId={activeModId} onSelect={function(id){setView("m:"+id);}} onSettings={function(){setView("settings");}} onChangeTrack={function(){setTrackMode(true);}} onGuide={function(){setShowGuide(true);}}/>
+      {/* Sidebar — solo visible en desktop, colapsable */}
+      <div id="sidebar-wrapper" style={{display:"none",position:"relative",flexShrink:0}}>
+        {/* Botón toggle — siempre visible en desktop */}
+        <button
+          onClick={function(){setSidebarCollapsed(!sidebarCollapsed);}}
+          title={sidebarCollapsed?"Expandir panel":"Colapsar panel"}
+          style={{
+            position:"absolute",top:12,right:-14,zIndex:200,
+            width:28,height:28,borderRadius:"50%",
+            border:"1.5px solid #E5E7EB",
+            background:"white",cursor:"pointer",
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:13,boxShadow:"0 2px 8px rgba(0,0,0,.12)",
+            color:"#6B7280",transition:"all .2s",fontFamily:"inherit",
+          }}>
+          {sidebarCollapsed?"›":"‹"}
+        </button>
+        {/* Sidebar colapsado — solo muestra franja con emoji del track */}
+        {sidebarCollapsed
+          ? <div style={{width:48,height:"100vh",background:"white",borderRight:"1px solid #E5E7EB",display:"flex",flexDirection:"column",alignItems:"center",paddingTop:16,gap:12}}>
+              <div style={{width:32,height:32,borderRadius:9,background:track.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,color:"white"}}>{track.emoji}</div>
+              <div style={{width:1,flex:1,background:"#F3F4F6"}}/>
+              <button onClick={function(){setShowGuide(true);}} title="Guía" style={{width:32,height:32,borderRadius:"50%",border:"1px solid #E5E7EB",background:"#F9FAFB",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:4}}>📖</button>
+              <button onClick={function(){setView("settings");}} title="Ajustes" style={{width:32,height:32,borderRadius:"50%",border:"1px solid #E5E7EB",background:"#F9FAFB",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:16}}>⚙️</button>
+            </div>
+          : <Sidebar track={track} progMap={Object.fromEntries(track.modules.map(function(m){return[m.id,getModProgress(m.id)];}))} activeModId={activeModId} onSelect={function(id){setView("m:"+id);}} onSettings={function(){setView("settings");}} onChangeTrack={function(){setTrackMode(true);}} onGuide={function(){setShowGuide(true);}}/>
+        }
+      </div>
 
       <div id="main-panel" style={{flex:1,display:"flex",flexDirection:"column",minWidth:0,overflow:"hidden"}}>
         {/* Mobile nav */}
